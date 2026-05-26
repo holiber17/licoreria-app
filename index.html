@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Licorería</title>
-<link rel="manifest" href="manifest.json">
+
 <meta name="theme-color" content="#1a1a1a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -899,6 +899,12 @@ async function activarUsuario(userId){
 }
 async function cambiarRol(userId,rol){await sb.from('perfiles').update({rol}).eq('id',userId);showToast('Rol actualizado ✓');}
 async function cambiarSucursalUsuario(userId,sucId){await sb.from('perfiles').update({sucursal_id:sucId}).eq('id',userId);showToast('Sucursal actualizada ✓');}
+
+// ---- LIMPIAR SW Y CACHE AL INICIO ----
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(regs=>regs.forEach(r=>r.unregister()));
+  caches.keys().then(keys=>keys.forEach(k=>caches.delete(k)));
+}
 
 // ---- BOOT ----
 applyDark();
