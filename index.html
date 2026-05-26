@@ -261,7 +261,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           </div>
           <button class="btn sm success" onclick="cobrarPedido()"><i class="ti ti-cash"></i> Cobrar</button>
         </div>
-        <button class="btn sm danger full" onclick="cancelarPedido()" style="margin-bottom:12px"><i class="ti ti-x"></i> Cancelar sin cobrar</button>
+        <button class="btn sm danger full" onclick="cancelarPedido()" style="margin-bottom:8px"><i class="ti ti-x"></i> Cancelar sin cobrar</button>
+        <button class="btn sm full" onclick="mostrarQR()" style="margin-bottom:12px"><i class="ti ti-qrcode"></i> Compartir QR con el cliente</button>
+        <!-- Modal QR -->
+        <div id="qr-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:none;align-items:center;justify-content:center">
+          <div style="background:var(--bg);border-radius:var(--radius-lg);padding:24px;max-width:320px;width:90%;text-align:center">
+            <div style="font-size:17px;font-weight:600;margin-bottom:4px">QR del pedido</div>
+            <div style="font-size:13px;color:var(--text2);margin-bottom:16px">El cliente escanea este código para ver su consumo</div>
+            <div id="qr-container" style="margin:0 auto 16px;width:200px;height:200px;display:flex;align-items:center;justify-content:center;background:var(--bg2);border-radius:var(--radius)"></div>
+            <div id="qr-url" style="font-size:11px;color:var(--text2);word-break:break-all;margin-bottom:16px"></div>
+            <button class="btn full" onclick="cerrarQR()"><i class="ti ti-x"></i> Cerrar</button>
+          </div>
+        </div>
         <div class="itabs">
           <button class="itab active" id="tab-consumo" onclick="switchTab('consumo')">Consumo</button>
           <button class="itab" id="tab-agregar" onclick="switchTab('agregar')">Agregar</button>
@@ -629,6 +640,21 @@ async function cobrarPedido(){
   await sb.from('caja').insert({sucursal_id:sucursalActual.id,pedido_id:pedidoActual.id,usuario_id:user.id,cliente_nombre:pedidoActual.cliente_nombre,total_usd:total,tasa_bcv:tasa(),nota,fecha:new Date().toISOString()});
   feedback();showToast(`Cobrado ${fmtUSD(total)} ✓`);
   pedidoActual=null;goLista();switchGNav('caja');
+}
+
+// ---- QR ----
+function mostrarQR(){
+  if(!pedidoActual)return;
+  const url='https://holiber17.github.io/licoreria-app/pedido.html?id='+pedidoActual.id;
+  document.getElementById('qr-url').textContent=url;
+  const modal=document.getElementById('qr-modal');
+  modal.style.display='flex';
+  // Generar QR con API pública
+  const container=document.getElementById('qr-container');
+  container.innerHTML='<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data='+encodeURIComponent(url)+'" style="border-radius:8px;width:180px;height:180px" alt="QR">';
+}
+function cerrarQR(){
+  document.getElementById('qr-modal').style.display='none';
 }
 
 // ---- TABS ----

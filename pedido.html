@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi pedido — Licorería</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+:root{
+  --bg:#fff;--bg2:#f5f4f1;--bg3:#eceae4;
+  --text:#1a1a1a;--text2:#6b6860;--text3:#a09d97;
+  --border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.2);
+  --success:#1d7a4a;--success-bg:#e8f5ee;
+  --warning:#8a5a00;--warning-bg:#fff3d6;
+  --danger:#c0392b;--danger-bg:#fdf0ee;
+  --info:#1a5fa8;--info-bg:#e8f1fb;
+  --radius:10px;--radius-lg:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg3);color:var(--text);min-height:100vh;display:flex;justify-content:center}
+.shell{width:100%;max-width:480px;background:var(--bg);min-height:100vh;display:flex;flex-direction:column}
+.hdr{background:var(--bg);border-bottom:.5px solid var(--border);padding:16px;display:flex;align-items:center;justify-content:space-between}
+.hdr h1{font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px}
+.live-badge{background:var(--danger-bg);color:var(--danger);font-size:11px;font-weight:600;padding:4px 10px;border-radius:99px;display:flex;align-items:center;gap:5px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--danger);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.content{flex:1;padding:16px}
+.card{background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px}
+.cliente-header{text-align:center;padding:24px 16px 16px}
+.cliente-avatar{width:64px;height:64px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:var(--info);margin:0 auto 12px}
+.cliente-nombre{font-size:22px;font-weight:700;color:var(--text);margin-bottom:4px}
+.cliente-sub{font-size:13px;color:var(--text2)}
+.metric-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+.metric{background:var(--bg2);border-radius:var(--radius);padding:14px;text-align:center}
+.metric-label{font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px}
+.metric-value{font-size:20px;font-weight:700;color:var(--text)}
+.metric-value.success{color:var(--success)}
+.metric-value.warning{color:var(--warning)}
+.item-row{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:.5px solid var(--border)}
+.item-row:last-child{border-bottom:none}
+.item-icon{width:44px;height:44px;border-radius:10px;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;border:.5px solid var(--border)}
+.item-img{width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0;border:.5px solid var(--border)}
+.item-info{flex:1;min-width:0}
+.item-name{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-sub{font-size:12px;color:var(--text2);margin-top:3px}
+.item-right{text-align:right;flex-shrink:0}
+.item-price{font-size:13px;font-weight:600;color:var(--text)}
+.item-bs{font-size:11px;color:var(--text2)}
+.prog-bar{height:5px;border-radius:99px;background:var(--bg3);overflow:hidden;margin-top:5px}
+.prog-fill{height:100%;border-radius:99px;background:var(--success);transition:width .3s}
+.prog-fill.warn{background:var(--warning)}
+.prog-fill.full{background:var(--danger)}
+.restante-badge{display:inline-block;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:600}
+.rb-ok{background:var(--success-bg);color:var(--success)}
+.rb-warn{background:var(--warning-bg);color:var(--warning)}
+.rb-full{background:var(--danger-bg);color:var(--danger)}
+.total-box{background:var(--text);border-radius:var(--radius-lg);padding:20px;text-align:center;margin-bottom:12px}
+.total-label{font-size:13px;color:rgba(255,255,255,.7);margin-bottom:8px}
+.total-usd{font-size:32px;font-weight:700;color:#fff;margin-bottom:4px}
+.total-bs{font-size:16px;color:rgba(255,255,255,.7)}
+.empty{text-align:center;padding:3rem 1rem;color:var(--text2);font-size:14px}
+.empty i{font-size:48px;display:block;margin-bottom:12px;color:var(--text3)}
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:12px;color:var(--text2)}
+.spinner{width:32px;height:32px;border:3px solid var(--border2);border-top-color:var(--text);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.footer{padding:16px;text-align:center;font-size:12px;color:var(--text3);border-top:.5px solid var(--border)}
+.section-title{font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px}
+.cobrado-banner{background:var(--success-bg);border:.5px solid var(--success);border-radius:var(--radius-lg);padding:16px;text-align:center;margin-bottom:12px}
+.cobrado-banner i{font-size:32px;color:var(--success);display:block;margin-bottom:8px}
+.cobrado-banner p{font-size:14px;color:var(--success);font-weight:600}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="hdr">
+    <h1><i class="ti ti-bottle"></i> Licorería</h1>
+    <div class="live-badge" id="live-badge">
+      <div class="live-dot"></div>
+      En vivo
+    </div>
+  </div>
+
+  <div class="content" id="content">
+    <div class="loading">
+      <div class="spinner"></div>
+      <span>Cargando tu pedido...</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    Actualiza automáticamente cada 15 segundos · Licorería App
+  </div>
+</div>
+
+<script>
+const SUPA_URL='https://ysnsmsfeqbnezjgxkkui.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzbnNtc2ZlcWJuZXpqZ3hra3VpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MDE3NDQsImV4cCI6MjA5NTM3Nzc0NH0.Xn6IwKjoTTRRvuyXIai7tz0iq1rhKEKrs46ZMwLfr3s';
+
+const catIcon={'Ron':'🥃','Cerveza':'🍺','Whisky':'🥃','Vodka':'🍸','Anís':'🌿','Vino':'🍷','Champán':'🍾','Tequila':'🌵','Mezcladores':'🥤','default':'🍶'};
+function getCatIcon(cat){return catIcon[cat]||catIcon['default'];}
+
+// Obtener ID del pedido de la URL
+const params=new URLSearchParams(window.location.search);
+const pedidoId=params.get('id');
+
+let tasa=530;
+
+async function fetchTasa(){
+  try{
+    const r=await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+    if(r.ok){const d=await r.json();tasa=parseFloat(d.promedio)||530;}
+  }catch(e){}
+}
+
+function fmtUSD(n){return'$'+(+n||0).toFixed(2);}
+function fmtBs(n){return'Bs '+Math.round((+n||0)*tasa).toLocaleString('es-VE');}
+function ini(n){return(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0].toUpperCase()).join('');}
+
+async function loadPedido(){
+  if(!pedidoId){
+    document.getElementById('content').innerHTML='<div class="empty"><i class="ti ti-alert-triangle"></i>Pedido no encontrado.<br>Escanea el QR nuevamente.</div>';
+    return;
+  }
+
+  try{
+    const r=await fetch(SUPA_URL+'/rest/v1/pedidos?select=*,pedido_items(*)&id=eq.'+pedidoId,{
+      headers:{'apikey':SUPA_KEY,'Accept':'application/json'}
+    });
+    if(!r.ok)throw new Error('Error al cargar');
+    const data=await r.json();
+    const pedido=data[0];
+
+    if(!pedido){
+      document.getElementById('content').innerHTML='<div class="empty"><i class="ti ti-receipt-off"></i>Pedido no encontrado.</div>';
+      return;
+    }
+
+    renderPedido(pedido);
+  }catch(e){
+    document.getElementById('content').innerHTML='<div class="empty"><i class="ti ti-wifi-off"></i>Error de conexión.<br>Intenta de nuevo.</div>';
+  }
+}
+
+function renderPedido(pedido){
+  const items=pedido.pedido_items||[];
+  const totalUSD=items.reduce((s,i)=>s+(i.consumido*i.precio_usd),0);
+  const cobrado=pedido.estado==='cobrado';
+  const tasaPedido=parseFloat(pedido.tasa_bcv)||tasa;
+
+  // Badge en vivo
+  const badge=document.getElementById('live-badge');
+  if(cobrado){
+    badge.innerHTML='<i class="ti ti-check"></i> Cobrado';
+    badge.style.background='var(--success-bg)';
+    badge.style.color='var(--success)';
+  }
+
+  let html='';
+
+  // Header cliente
+  html+=`<div class="cliente-header">
+    <div class="cliente-avatar">${ini(pedido.cliente_nombre)}</div>
+    <div class="cliente-nombre">${pedido.cliente_nombre}</div>
+    <div class="cliente-sub">${cobrado?'Pedido cerrado':'Pedido activo'}</div>
+  </div>`;
+
+  // Si está cobrado
+  if(cobrado){
+    html+=`<div class="cobrado-banner">
+      <i class="ti ti-circle-check"></i>
+      <p>¡Pedido cerrado!</p>
+      <div style="font-size:13px;color:var(--success);margin-top:4px">${pedido.nota||''}</div>
+    </div>`;
+  }
+
+  // Métricas
+  const combos=items.filter(i=>i.tipo==='combo');
+  const totalItems=items.length;
+  html+=`<div class="metric-grid">
+    <div class="metric"><div class="metric-label">Total consumido</div><div class="metric-value success">${fmtUSD(totalUSD)}</div></div>
+    <div class="metric"><div class="metric-label">En bolívares</div><div class="metric-value" style="font-size:15px">Bs ${Math.round(totalUSD*tasaPedido).toLocaleString('es-VE')}</div></div>
+    <div class="metric"><div class="metric-label">Ítems pedidos</div><div class="metric-value">${totalItems}</div></div>
+    <div class="metric"><div class="metric-label">Tasa BCV</div><div class="metric-value" style="font-size:15px">${tasaPedido.toFixed(2)}</div></div>
+  </div>`;
+
+  // Lista de ítems
+  if(!items.length){
+    html+='<div class="empty"><i class="ti ti-shopping-bag"></i>Sin ítems en el pedido.</div>';
+  } else {
+    html+='<div class="card"><div class="section-title">Detalle del pedido</div>';
+    html+=items.map(item=>{
+      const esCombo=item.tipo==='combo';
+      const restante=item.total-item.consumido;
+      const pct=Math.round((item.consumido/item.total)*100);
+      const fc=pct>=100?'full':pct>=70?'warn':'';
+      const rbClass=pct>=100?'rb-full':pct>=70?'rb-warn':'rb-ok';
+      const sub=item.consumido*item.precio_usd;
+      const imgHtml=item.imagen_url
+        ?`<img class="item-img" src="${item.imagen_url}" alt="${item.nombre}" onerror="this.outerHTML='<div class=\\"item-icon\\">${getCatIcon(item.categoria)}</div>'">`
+        :`<div class="item-icon">${getCatIcon(item.categoria||'default')}</div>`;
+      return`<div class="item-row">
+        ${imgHtml}
+        <div class="item-info">
+          <div class="item-name">${item.nombre}</div>
+          <div class="item-sub">${esCombo
+            ?`<span class="restante-badge ${rbClass}">${restante} de ${item.total} restantes</span>`
+            :`${item.consumido} pedida${item.consumido!==1?'s':''}`
+          }</div>
+          ${esCombo?`<div class="prog-bar"><div class="prog-fill ${fc}" style="width:${pct}%"></div></div>`:''}
+        </div>
+        <div class="item-right">
+          <div class="item-price">${fmtUSD(sub)}</div>
+          <div class="item-bs">${fmtBs(sub)}</div>
+        </div>
+      </div>`;
+    }).join('');
+    html+='</div>';
+  }
+
+  // Total a pagar
+  html+=`<div class="total-box">
+    <div class="total-label">Total a pagar</div>
+    <div class="total-usd">${fmtUSD(totalUSD)}</div>
+    <div class="total-bs">Bs ${Math.round(totalUSD*tasaPedido).toLocaleString('es-VE')}</div>
+  </div>`;
+
+  document.getElementById('content').innerHTML=html;
+}
+
+// Iniciar
+fetchTasa().then(loadPedido);
+
+// Actualizar cada 15 segundos
+setInterval(()=>{fetchTasa().then(loadPedido);}, 15000);
+</script>
+</body>
+</html>
