@@ -373,7 +373,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 const SUPA_URL='https://ysnsmsfeqbnezjgxkkui.supabase.co';
 const SUPA_KEY='sb_publishable_YD-Pi0pD6c_PeUnrGmFCtQ_FrHaYzJ0';
 const{createClient}=supabase;
-const sb=createClient(SUPA_URL,SUPA_KEY);
+const sb=createClient(SUPA_URL,SUPA_KEY,{auth:{storage:localStorage,persistSession:true,detectSessionInUrl:false}});
 
 let user=null,perfil=null,sucursalActual=null,pedidoActual=null,menuItems=[];
 let moneda=localStorage.getItem('moneda')||'both';
