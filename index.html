@@ -900,45 +900,42 @@ async function activarUsuario(userId){
 async function cambiarRol(userId,rol){await sb.from('perfiles').update({rol}).eq('id',userId);showToast('Rol actualizado ✓');}
 async function cambiarSucursalUsuario(userId,sucId){await sb.from('perfiles').update({sucursal_id:sucId}).eq('id',userId);showToast('Sucursal actualizada ✓');}
 
-// ---- LIMPIAR SW Y CACHE AL INICIO ----
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.getRegistrations().then(regs=>regs.forEach(r=>r.unregister()));
-  caches.keys().then(keys=>keys.forEach(k=>caches.delete(k)));
-}
-
 // ---- BOOT ----
 applyDark();
 
-// Timeout de seguridad: si en 6 segundos no hay respuesta, mostrar login
-const bootTimeout = setTimeout(()=>{
-  console.warn('Boot timeout — mostrando login');
-  showAuthScreen();
-}, 6000);
-
-// Intentar sesión existente primero (para recargas)
-sb.auth.getSession().then(async({data:{session}})=>{
-  clearTimeout(bootTimeout);
-  if(session?.user){
-    showLoadingScreen();
-    await initApp(session.user);
-  } else {
-    showAuthScreen();
+async function boot(){
+  // Leer token directo de localStorage
+  const tokenKey = Object.keys(localStorage).find(k=>k.includes('supabase')&&k.includes('auth-token'));
+  if(tokenKey){
+    try{
+      const stored = JSON.parse(localStorage.getItem(tokenKey));
+      const accessToken = stored?.access_token;
+      const refreshToken = stored?.refresh_token;
+      if(accessToken && refreshToken){
+        const{data,error} = await sb.auth.setSession({access_token:accessToken,refresh_token:refreshToken});
+        if(!error && data?.user){
+          showLoadingScreen();
+          await initApp(data.user);
+          return;
+        }
+      }
+    }catch(e){console.error('boot token error:',e);}
   }
-}).catch(()=>{
-  clearTimeout(bootTimeout);
+  // Sin sesión guardada — mostrar login
   showAuthScreen();
-});
+}
 
-// Escuchar cambios de sesión (login/logout)
+// Escuchar login/logout
 sb.auth.onAuthStateChange(async(event,session)=>{
   if(event==='SIGNED_IN'&&session?.user){
-    clearTimeout(bootTimeout);
     showLoadingScreen();
     await initApp(session.user);
   } else if(event==='SIGNED_OUT'){
     showAuthScreen();
   }
 });
+
+boot();
 </script>
 </body>
 </html>
