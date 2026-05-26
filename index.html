@@ -900,14 +900,6 @@ async function activarUsuario(userId){
 async function cambiarRol(userId,rol){await sb.from('perfiles').update({rol}).eq('id',userId);showToast('Rol actualizado ✓');}
 async function cambiarSucursalUsuario(userId,sucId){await sb.from('perfiles').update({sucursal_id:sucId}).eq('id',userId);showToast('Sucursal actualizada ✓');}
 
-// ---- DESREGISTRAR SERVICE WORKER ----
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.getRegistrations().then(regs=>{
-    regs.forEach(reg=>reg.unregister());
-  });
-  caches.keys().then(keys=>keys.forEach(k=>caches.delete(k)));
-}
-
 // ---- BOOT ----
 applyDark();
 
