@@ -905,7 +905,7 @@ applyDark();
 
 async function boot(){
   // Leer token directo de localStorage
-  const tokenKey = Object.keys(localStorage).find(k=>k.includes('supabase')&&k.includes('auth-token'));
+  const tokenKey = Object.keys(localStorage).find(k=>k.includes('auth-token')||k.includes('supabase'));
   if(tokenKey){
     try{
       const stored = JSON.parse(localStorage.getItem(tokenKey));
