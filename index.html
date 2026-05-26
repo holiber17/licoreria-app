@@ -465,7 +465,7 @@ async function doRegister(){
     showLogin();
   }
 }
-async function doLogout(){await sb.auth.signOut();user=null;perfil=null;sucursalActual=null;showAuthScreen();}
+async function doLogout(){if(user)localStorage.removeItem('perfil_cache_'+user.id);await sb.auth.signOut();user=null;perfil=null;sucursalActual=null;showAuthScreen();}
 
 // ---- CHECK ACTIVATION ----
 async function checkActivation(){
@@ -488,6 +488,29 @@ function showApp(){document.getElementById('loading-screen').style.display='none
 async function initApp(u){
   user=u;
   try{
+    // Usar caché local para recargas rápidas
+    const cached=localStorage.getItem('perfil_cache_'+u.id);
+    if(cached){
+      perfil=JSON.parse(cached);
+      if(perfil.sucursal_id){
+        await launchApp();
+        // Actualizar caché en background
+        refreshPerfilCache(u);
+        return;
+      }
+    }
+    await refreshPerfilCache(u);
+  }catch(err){
+    console.error('initApp error:',err);
+    // Si hay caché usar igual
+    const cached=localStorage.getItem('perfil_cache_'+u.id);
+    if(cached){perfil=JSON.parse(cached);if(perfil.sucursal_id){await launchApp();return;}}
+    showAuthScreen();
+  }
+}
+
+async function refreshPerfilCache(u){
+  try{
     const{data:p}=await sb.from('perfiles').select('id,nombre,rol,sucursal_id').eq('id',u.id).single();
     if(!p){
       await sb.from('perfiles').upsert({id:u.id,nombre:u.user_metadata?.nombre||u.email,rol:'empleado',sucursal_id:null});
@@ -497,10 +520,11 @@ async function initApp(u){
     if(!perfil.sucursal_id){showWaitScreen();return;}
     const{data:suc}=await sb.from('sucursales').select('id,nombre,ciudad').eq('id',perfil.sucursal_id).single();
     perfil.sucursales=suc||{id:perfil.sucursal_id,nombre:'Mi sucursal'};
-    await launchApp();
+    // Guardar en caché
+    localStorage.setItem('perfil_cache_'+u.id,JSON.stringify(perfil));
+    if(!sucursalActual){await launchApp();}
   }catch(err){
-    console.error('initApp error:',err);
-    showAuthScreen();
+    console.error('refreshPerfilCache error:',err);
   }
 }
 
