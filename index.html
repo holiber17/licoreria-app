@@ -485,16 +485,24 @@ function showWaitScreen(){document.getElementById('loading-screen').style.displa
 function showApp(){document.getElementById('loading-screen').style.display='none';document.getElementById('auth-screen').style.display='none';document.getElementById('wait-screen').style.display='none';document.getElementById('app').style.display='flex';}
 
 // ---- INIT ----
+async function supaFetch(path, token){
+  const res = await fetch(SUPA_URL+'/rest/v1/'+path,{
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+  });
+  if(!res.ok) return null;
+  const data = await res.json();
+  return Array.isArray(data)?data[0]:data;
+}
+
 async function initApp(u){
   user=u;
   try{
-    // Usar caché local para recargas rápidas
+    // Usar caché para carga rápida
     const cached=localStorage.getItem('perfil_cache_'+u.id);
     if(cached){
       perfil=JSON.parse(cached);
       if(perfil.sucursal_id){
         await launchApp();
-        // Actualizar caché en background
         refreshPerfilCache(u);
         return;
       }
@@ -502,7 +510,6 @@ async function initApp(u){
     await refreshPerfilCache(u);
   }catch(err){
     console.error('initApp error:',err);
-    // Si hay caché usar igual
     const cached=localStorage.getItem('perfil_cache_'+u.id);
     if(cached){perfil=JSON.parse(cached);if(perfil.sucursal_id){await launchApp();return;}}
     showAuthScreen();
@@ -511,16 +518,22 @@ async function initApp(u){
 
 async function refreshPerfilCache(u){
   try{
-    const{data:p}=await sb.from('perfiles').select('id,nombre,rol,sucursal_id').eq('id',u.id).single();
+    const tokenKey=Object.keys(localStorage).find(k=>k.includes('auth-token')||k.includes('supabase'));
+    const stored=JSON.parse(localStorage.getItem(tokenKey)||'{}');
+    const token=stored?.access_token||SUPA_KEY;
+    const p = await supaFetch('perfiles?select=id,nombre,rol,sucursal_id&id=eq.'+u.id, token);
     if(!p){
-      await sb.from('perfiles').upsert({id:u.id,nombre:u.user_metadata?.nombre||u.email,rol:'empleado',sucursal_id:null});
+      await fetch(SUPA_URL+'/rest/v1/perfiles',{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+        body:JSON.stringify({id:u.id,nombre:u.user_metadata?.nombre||u.email,rol:'empleado',sucursal_id:null})
+      });
       showWaitScreen();return;
     }
     perfil=p;
     if(!perfil.sucursal_id){showWaitScreen();return;}
-    const{data:suc}=await sb.from('sucursales').select('id,nombre,ciudad').eq('id',perfil.sucursal_id).single();
+    const suc = await supaFetch('sucursales?select=id,nombre,ciudad&id=eq.'+perfil.sucursal_id, token);
     perfil.sucursales=suc||{id:perfil.sucursal_id,nombre:'Mi sucursal'};
-    // Guardar en caché
     localStorage.setItem('perfil_cache_'+u.id,JSON.stringify(perfil));
     if(!sucursalActual){await launchApp();}
   }catch(err){
@@ -569,7 +582,13 @@ async function crearPedido(){
 async function renderPedidos(){
   if(!sucursalActual)return;
   const q=(document.getElementById('buscador')?.value||'').toLowerCase();
-  const{data:pedidos}=await sb.from('pedidos').select('*,pedido_items(*)').eq('sucursal_id',sucursalActual.id).eq('estado','abierto').order('created_at',{ascending:false});
+  const tokenKey=Object.keys(localStorage).find(k=>k.includes('auth-token')||k.includes('supabase'));
+  const stored=JSON.parse(localStorage.getItem(tokenKey)||'{}');
+  const token=stored?.access_token||SUPA_KEY;
+  const pedRes=await fetch(SUPA_URL+'/rest/v1/pedidos?select=*,pedido_items(*)&sucursal_id=eq.'+sucursalActual.id+'&estado=eq.abierto&order=created_at.desc',{
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+  });
+  const pedidos=pedRes.ok?await pedRes.json():[];
   const el=document.getElementById('pedidos-list');if(!el)return;
   const lista=(pedidos||[]).filter(p=>p.cliente_nombre.toLowerCase().includes(q));
   if(!lista.length){el.innerHTML='<div class="empty"><i class="ti ti-users"></i>Sin pedidos activos.<br>Toca "+ Nuevo".</div>';return;}
@@ -623,8 +642,15 @@ function switchTab(tab){
 // ---- MENU ----
 async function loadMenu(){
   if(!sucursalActual)return;
-  const{data}=await sb.from('menu').select('*').eq('sucursal_id',sucursalActual.id).eq('activo',true).order('categoria');
-  menuItems=data||[];
+  try{
+    const tokenKey=Object.keys(localStorage).find(k=>k.includes('auth-token')||k.includes('supabase'));
+    const stored=JSON.parse(localStorage.getItem(tokenKey)||'{}');
+    const token=stored?.access_token||SUPA_KEY;
+    const res=await fetch(SUPA_URL+'/rest/v1/menu?select=*&sucursal_id=eq.'+sucursalActual.id+'&activo=eq.true&order=categoria',{
+      headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+    });
+    menuItems=res.ok?await res.json():[];
+  }catch(e){menuItems=[];}
 }
 function renderMenuPicks(){
   const el=document.getElementById('menu-picks');
