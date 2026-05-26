@@ -332,6 +332,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </div>
       </div>
       <input class="sbar" id="menu-filter" placeholder="Buscar en el menú..." oninput="renderMenu()">
+      <!-- Modal editar producto -->
+      <div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:flex-end;justify-content:center">
+        <div style="background:var(--bg);border-radius:var(--radius-lg) var(--radius-lg) 0 0;padding:20px 16px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <span style="font-size:16px;font-weight:600">Editar producto</span>
+            <button class="btn sm" onclick="cerrarEditModal()"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="fg"><label>Tipo</label>
+            <select id="ef-tipo" onchange="toggleEfTipo()"><option value="combo">Combo</option><option value="suelto">Bebida suelta</option></select>
+          </div>
+          <div class="fg"><label>Nombre</label><input id="ef-nombre" placeholder="Nombre del producto"></div>
+          <div id="ef-combo-f" class="fg"><label>Unidades por combo</label><input id="ef-total" type="number" placeholder="12" min="1"></div>
+          <div class="fg"><label>Precio por unidad (USD $)</label><input id="ef-precio" type="number" placeholder="0.00" min="0" step="0.01"></div>
+          <div class="row2">
+            <div class="fg"><label>Unidad</label><input id="ef-unidad" placeholder="lata, botella..."></div>
+            <div class="fg"><label>Categoría</label><input id="ef-cat" placeholder="Cerveza, Ron..."></div>
+          </div>
+          <div class="fg"><label>URL de imagen (opcional)</label><input id="ef-imagen" placeholder="https://..."></div>
+          <div id="ef-preview" style="margin-bottom:10px;display:none">
+            <img id="ef-preview-img" style="width:80px;height:80px;border-radius:10px;object-fit:cover;border:.5px solid var(--border)" alt="preview">
+          </div>
+          <div class="fa">
+            <button class="btn sm" onclick="cerrarEditModal()">Cancelar</button>
+            <button class="btn sm primary" onclick="guardarEdicion()"><i class="ti ti-check"></i> Guardar cambios</button>
+          </div>
+        </div>
+      </div>
       <div id="menu-list"></div>
     </div>
 
@@ -783,9 +810,78 @@ async function guardarMenuProduct(){
   document.getElementById('menu-form').style.display='none';
   await loadMenu();renderMenu();showToast('Producto agregado ✓');
 }
+let editandoId=null;
+
+function abrirEditModal(id){
+  const prod=menuItems.find(m=>m.id===id);
+  if(!prod)return;
+  editandoId=id;
+  document.getElementById('ef-tipo').value=prod.tipo;
+  document.getElementById('ef-nombre').value=prod.nombre;
+  document.getElementById('ef-total').value=prod.unidades_combo||1;
+  document.getElementById('ef-precio').value=prod.precio_usd;
+  document.getElementById('ef-unidad').value=prod.unidad;
+  document.getElementById('ef-cat').value=prod.categoria||'';
+  document.getElementById('ef-imagen').value=prod.imagen_url||'';
+  toggleEfTipo();
+  // Preview imagen
+  if(prod.imagen_url){
+    document.getElementById('ef-preview').style.display='block';
+    document.getElementById('ef-preview-img').src=prod.imagen_url;
+  } else {
+    document.getElementById('ef-preview').style.display='none';
+  }
+  document.getElementById('edit-modal').style.display='flex';
+}
+
+function cerrarEditModal(){
+  document.getElementById('edit-modal').style.display='none';
+  editandoId=null;
+}
+
+function toggleEfTipo(){
+  document.getElementById('ef-combo-f').style.display=document.getElementById('ef-tipo').value==='combo'?'block':'none';
+}
+
+document.getElementById('ef-imagen')?.addEventListener('input',function(){
+  const url=this.value.trim();
+  if(url){
+    document.getElementById('ef-preview').style.display='block';
+    document.getElementById('ef-preview-img').src=url;
+  } else {
+    document.getElementById('ef-preview').style.display='none';
+  }
+});
+
+async function guardarEdicion(){
+  if(!editandoId)return;
+  const tipo=document.getElementById('ef-tipo').value;
+  const nombre=document.getElementById('ef-nombre').value.trim();
+  const precio_usd=parseFloat(document.getElementById('ef-precio').value)||0;
+  const unidad=document.getElementById('ef-unidad').value.trim()||'und';
+  const categoria=document.getElementById('ef-cat').value.trim()||'General';
+  const imagen_url=document.getElementById('ef-imagen').value.trim()||null;
+  const unidades_combo=tipo==='combo'?parseInt(document.getElementById('ef-total').value)||1:1;
+  if(!nombre){alert('Escribe el nombre');return;}
+  const token=await getToken();
+  await fetch(SUPA_URL+'/rest/v1/menu?id=eq.'+editandoId,{
+    method:'PATCH',
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({nombre,tipo,precio_usd,unidad,categoria,unidades_combo,imagen_url})
+  });
+  cerrarEditModal();
+  await loadMenu();renderMenu();
+  showToast('Producto actualizado ✓');
+}
+
 async function eliminarMenuProduct(id){
   if(!confirm('¿Eliminar este producto?'))return;
-  await sb.from('menu').update({activo:false}).eq('id',id);
+  const token=await getToken();
+  await fetch(SUPA_URL+'/rest/v1/menu?id=eq.'+id,{
+    method:'PATCH',
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({activo:false})
+  });
   await loadMenu();renderMenu();
 }
 function renderMenu(){
@@ -802,7 +898,7 @@ function renderMenu(){
         <div style="font-size:14px;font-weight:600">${m.nombre} <span class="pill ${m.tipo}" style="font-size:10px;margin-left:4px">${m.tipo==='combo'?'Combo':'Suelta'}</span></div>
         <div style="font-size:12px;color:var(--text2);margin-top:2px">${m.tipo==='combo'?m.unidades_combo+' '+m.unidad+'s · ':''}${fmtPrice(m.precio_usd)} por ${m.unidad}</div>
       </div>
-      <button class="btn sm danger" onclick="eliminarMenuProduct('${m.id}')"><i class="ti ti-trash" style="font-size:13px"></i></button>
+      <div style="display:flex;gap:6px"><button class="btn sm" onclick="abrirEditModal('${m.id}')"><i class="ti ti-pencil" style="font-size:13px"></i></button><button class="btn sm danger" onclick="eliminarMenuProduct('${m.id}')"><i class="ti ti-trash" style="font-size:13px"></i></button></div>
     </div>`).join('')}</div>`;
   }).join('');
 }
