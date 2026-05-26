@@ -904,24 +904,48 @@ async function cambiarSucursalUsuario(userId,sucId){await sb.from('perfiles').up
 applyDark();
 
 async function boot(){
-  // Leer token directo de localStorage
   const tokenKey = Object.keys(localStorage).find(k=>k.includes('auth-token')||k.includes('supabase'));
   if(tokenKey){
     try{
       const stored = JSON.parse(localStorage.getItem(tokenKey));
       const accessToken = stored?.access_token;
-      const refreshToken = stored?.refresh_token;
-      if(accessToken && refreshToken){
-        const{data,error} = await sb.auth.setSession({access_token:accessToken,refresh_token:refreshToken});
-        if(!error && data?.user){
-          showLoadingScreen();
-          await initApp(data.user);
-          return;
+      if(accessToken){
+        // Verificar token directamente con fetch sin usar el cliente de Supabase
+        const res = await fetch(SUPA_URL+'/auth/v1/user',{
+          headers:{'Authorization':'Bearer '+accessToken,'apikey':SUPA_KEY}
+        });
+        if(res.ok){
+          const userData = await res.json();
+          if(userData?.id){
+            user = {id:userData.id, email:userData.email, user_metadata:userData.user_metadata||{}};
+            showLoadingScreen();
+            await initApp(user);
+            return;
+          }
+        } else {
+          // Token expirado — intentar refresh
+          const refreshToken = stored?.refresh_token;
+          if(refreshToken){
+            const rres = await fetch(SUPA_URL+'/auth/v1/token?grant_type=refresh_token',{
+              method:'POST',
+              headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
+              body:JSON.stringify({refresh_token:refreshToken})
+            });
+            if(rres.ok){
+              const rdata = await rres.json();
+              if(rdata?.access_token){
+                localStorage.setItem(tokenKey, JSON.stringify(rdata));
+                user = {id:rdata.user.id, email:rdata.user.email, user_metadata:rdata.user.user_metadata||{}};
+                showLoadingScreen();
+                await initApp(user);
+                return;
+              }
+            }
+          }
         }
       }
-    }catch(e){console.error('boot token error:',e);}
+    }catch(e){console.error('boot error:',e);}
   }
-  // Sin sesión guardada — mostrar login
   showAuthScreen();
 }
 
