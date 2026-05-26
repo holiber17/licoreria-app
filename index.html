@@ -6,6 +6,7 @@
 <title>Licorería</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1a1a1a">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Licorería">
 <link rel="apple-touch-icon" href="icon.svg">
@@ -51,6 +52,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .btn.primary{background:var(--text);color:var(--bg);border-color:var(--text)}.btn.primary:hover{opacity:.85}
 .btn.success{background:var(--success-bg);color:var(--success);border-color:var(--success)}
 .btn.danger{background:var(--danger-bg);color:var(--danger);border-color:var(--danger)}
+.btn.warning{background:var(--warning-bg);color:var(--warning);border-color:var(--warning)}
 .btn.sm{padding:5px 10px;font-size:12px}.btn.full{width:100%;justify-content:center}
 .card{background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:10px}
 .af{background:var(--bg2);border-radius:var(--radius);padding:14px;margin-bottom:14px}
@@ -61,11 +63,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .fa{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
 .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:14px}
+/* AUTH */
 .auth-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px;background:var(--bg3)}
 .auth-box{background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:28px 24px;width:100%;max-width:380px}
 .auth-logo{font-size:40px;text-align:center;margin-bottom:8px}
 .auth-title{font-size:20px;font-weight:700;text-align:center;margin-bottom:4px}
 .auth-sub{font-size:13px;color:var(--text2);text-align:center;margin-bottom:20px}
+/* WAITING SCREEN */
+.wait-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px;background:var(--bg3);text-align:center;gap:16px}
+.wait-icon{font-size:60px}
+.wait-title{font-size:20px;font-weight:700;color:var(--text)}
+.wait-sub{font-size:14px;color:var(--text2);line-height:1.6;max-width:300px}
+.wait-badge{background:var(--warning-bg);color:var(--warning);padding:8px 16px;border-radius:99px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+/* CARDS */
 .cli-card{background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:14px;cursor:pointer;transition:all .15s;margin-bottom:8px}
 .cli-card:hover{border-color:var(--border2);transform:translateY(-1px)}
 .cli-card.activo{border-color:var(--warning)}
@@ -75,9 +85,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .pill.cobrado{background:var(--success-bg);color:var(--success)}
 .pill.combo{background:var(--info-bg);color:var(--info)}
 .pill.suelto{background:var(--bg2);color:var(--text2)}
+.pill.dueno{background:var(--danger-bg);color:var(--danger)}
+.pill.empleado{background:var(--info-bg);color:var(--info)}
+.pill.pendiente{background:var(--warning-bg);color:var(--warning)}
+/* TABS */
 .itabs{display:flex;gap:3px;background:var(--bg2);border-radius:var(--radius);padding:4px;margin-bottom:14px}
 .itab{flex:1;padding:7px 4px;border-radius:7px;font-size:12px;cursor:pointer;border:none;background:transparent;color:var(--text2);font-family:inherit;text-align:center;transition:all .15s;font-weight:500}
 .itab.active{background:var(--bg);color:var(--text);border:.5px solid var(--border);font-weight:600}
+/* ITEMS */
 .item-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:.5px solid var(--border)}
 .item-row:last-child{border-bottom:none}
 .ii{flex:1;min-width:0}
@@ -90,11 +105,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .prog-bar{height:5px;border-radius:99px;background:var(--bg3);overflow:hidden;margin-top:5px}
 .prog-fill{height:100%;border-radius:99px;background:var(--success);transition:width .3s}
 .prog-fill.warn{background:var(--warning)}.prog-fill.full{background:var(--danger)}
-/* PRODUCT IMAGE */
-.prod-img{width:52px;height:52px;border-radius:10px;object-fit:cover;background:var(--bg2);flex-shrink:0;border:.5px solid var(--border)}
-.prod-img-sm{width:38px;height:38px;border-radius:8px;object-fit:cover;background:var(--bg2);flex-shrink:0;border:.5px solid var(--border)}
+/* PRODUCT IMAGES */
 .cat-icon{width:52px;height:52px;border-radius:10px;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;border:.5px solid var(--border)}
 .cat-icon-sm{width:38px;height:38px;border-radius:8px;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;border:.5px solid var(--border)}
+.prod-img{width:52px;height:52px;border-radius:10px;object-fit:cover;background:var(--bg2);flex-shrink:0;border:.5px solid var(--border)}
+.prod-img-sm{width:38px;height:38px;border-radius:8px;object-fit:cover;background:var(--bg2);flex-shrink:0;border:.5px solid var(--border)}
 /* MENU GRID */
 .menu-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
 .menu-grid-item{background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:10px;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
@@ -102,13 +117,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .menu-grid-item:active{transform:scale(.96)}
 .mgi-img{width:80px;height:80px;border-radius:10px;object-fit:cover;background:var(--bg2);border:.5px solid var(--border)}
 .mgi-icon{width:80px;height:80px;border-radius:10px;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:40px;border:.5px solid var(--border)}
-.mgi-name{font-size:12px;font-weight:600;color:var(--text);line-height:1.3;max-width:100%}
+.mgi-name{font-size:12px;font-weight:600;color:var(--text);line-height:1.3}
 .mgi-price{font-size:11px;color:var(--text2)}
 .mgi-pill{font-size:10px;padding:2px 7px;border-radius:99px;font-weight:600}
-/* MENU LIST ITEM with image */
+/* MISC */
 .mi{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:.5px solid var(--border)}
 .mi:last-child{border-bottom:none}
-.mi-info{flex:1;min-width:0}
 .res-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:13px;border-bottom:.5px solid var(--border)}
 .res-row:last-child{border-bottom:none}
 .total-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0 0;font-size:16px;font-weight:700;border-top:.5px solid var(--border2);margin-top:4px}
@@ -131,13 +145,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .top-bar h2{font-size:15px;font-weight:600;display:flex;align-items:center;gap:6px}
 .sbar{width:100%;padding:10px 14px;border-radius:var(--radius);border:.5px solid var(--border2);background:var(--bg2);color:var(--text);font-size:14px;font-family:inherit;margin-bottom:14px;outline:none}
-.ch{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;margin-top:4px}
+.ch{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
 .hcard{background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:10px}
 .empty{text-align:center;padding:3rem 1rem;color:var(--text2);font-size:14px;line-height:1.7}
 .empty i{font-size:36px;display:block;margin-bottom:10px;color:var(--text3)}
-.suc-card{background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:all .15s}
+.suc-card{background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
 .suc-card.active-branch{border-color:var(--success);background:var(--success-bg)}
 .slabel{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 8px}
+/* USER CARD */
+.user-card{background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:8px}
+.user-card.pending{border-color:var(--warning);background:var(--warning-bg)}
+.pending-banner{background:var(--warning-bg);border:.5px solid var(--warning);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--warning);display:flex;align-items:center;gap:8px}
 </style>
 </head>
 <body>
@@ -147,6 +165,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <span>Cargando...</span>
 </div>
 
+<!-- AUTH -->
 <div id="auth-screen" class="auth-wrap" style="display:none">
   <div class="auth-box">
     <div class="auth-logo">🍾</div>
@@ -160,7 +179,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="btn full" onclick="showRegister()"><i class="ti ti-user-plus"></i> Crear cuenta nueva</button>
     </div>
     <div id="form-register" style="display:none">
-      <div class="fg"><label>Nombre</label><input id="reg-nombre" placeholder="Tu nombre"></div>
+      <div class="fg"><label>Nombre</label><input id="reg-nombre" placeholder="Tu nombre completo"></div>
       <div class="fg"><label>Correo</label><input id="reg-email" type="email" placeholder="tu@correo.com"></div>
       <div class="fg"><label>Contraseña</label><input id="reg-pass" type="password" placeholder="Mínimo 6 caracteres"></div>
       <button class="btn primary full" onclick="doRegister()" style="margin-bottom:12px"><i class="ti ti-check"></i> Registrarse</button>
@@ -169,6 +188,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<!-- PANTALLA DE ESPERA (empleado sin sucursal) -->
+<div id="wait-screen" class="wait-wrap" style="display:none">
+  <div class="wait-icon">⏳</div>
+  <div class="wait-title">Cuenta creada</div>
+  <div class="wait-sub">Tu cuenta está pendiente de activación. El dueño de la licorería debe asignarte una sucursal para que puedas acceder.</div>
+  <div class="wait-badge"><i class="ti ti-clock"></i> Esperando activación</div>
+  <div style="margin-top:8px;font-size:12px;color:var(--text3)">Registrado como: <strong id="wait-email"></strong></div>
+  <button class="btn sm" onclick="doLogout()" style="margin-top:16px"><i class="ti ti-logout"></i> Cerrar sesión</button>
+  <button class="btn sm" onclick="checkActivation()" style="margin-top:4px"><i class="ti ti-refresh"></i> Verificar activación</button>
+</div>
+
+<!-- APP PRINCIPAL -->
 <div id="app" class="shell" style="display:none">
   <div class="hdr">
     <div class="hdr-top">
@@ -238,12 +269,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </div>
         <div id="mt-consumo"><div id="consumo-list" class="card"></div></div>
         <div id="mt-agregar" style="display:none">
-          <input class="sbar" id="menu-search" placeholder="Buscar producto..." oninput="renderMenuPicks()" style="margin-bottom:10px">
+          <input class="sbar" id="menu-search" placeholder="Buscar producto..." oninput="renderMenuPicks()">
           <div id="menu-picks"></div>
           <div style="margin-bottom:10px"><button class="btn sm" onclick="toggleCustom()"><i class="ti ti-pencil"></i> Personalizado</button></div>
           <div id="custom-form" style="display:none" class="af">
             <div class="fg"><label>Tipo</label>
-              <select id="tipo-item" onchange="toggleTipo()"><option value="combo">Combo / paquete</option><option value="suelto">Bebida suelta</option></select>
+              <select id="tipo-item" onchange="toggleTipo()"><option value="combo">Combo</option><option value="suelto">Bebida suelta</option></select>
             </div>
             <div class="fg"><label>Nombre</label><input id="item-nombre" placeholder="Nombre del producto"></div>
             <div id="f-combo" class="fg"><label>Total unidades</label><input id="item-total" type="number" placeholder="10" min="1"></div>
@@ -328,6 +359,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <div id="amt-usuarios" style="display:none">
         <div class="top-bar"><h2>Usuarios</h2></div>
+        <div id="pending-banner" class="pending-banner" style="display:none">
+          <i class="ti ti-clock"></i>
+          <span id="pending-count"></span>
+        </div>
         <div id="usuarios-list"></div>
       </div>
     </div>
@@ -352,14 +387,13 @@ function prodImg(item,size='md'){
   const sz=size==='sm'?'prod-img-sm':'prod-img';
   const icsz=size==='sm'?'cat-icon-sm':'cat-icon';
   if(item.imagen_url){
-    return`<img class="${sz}" src="${item.imagen_url}" alt="${item.nombre}" onerror="this.parentNode.innerHTML='<div class=\\"${icsz}\\">${getCatIcon(item.categoria)}</div>'">`;
+    return`<img class="${sz}" src="${item.imagen_url}" alt="${item.nombre}" onerror="this.outerHTML='<div class=\\"${icsz}\\">${getCatIcon(item.categoria)}</div>'">`;
   }
   return`<div class="${icsz}">${getCatIcon(item.categoria||'default')}</div>`;
 }
 
 // ---- HELPERS ----
 function ini(n){return(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0].toUpperCase()).join('');}
-function ts(){return new Date().toLocaleString('es-VE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}
 function tasa(){return parseFloat(document.getElementById('tasa-input')?.value)||tasaBCV;}
 function saveTasa(){tasaBCV=tasa();localStorage.setItem('tasa',tasaBCV);renderAll();}
 function fmtUSD(n){return'$'+(+n||0).toFixed(2);}
@@ -407,7 +441,7 @@ async function fetchBCV(){
 
 // ---- AUTH ----
 function showLogin(){document.getElementById('form-login').style.display='block';document.getElementById('form-register').style.display='none';document.getElementById('auth-subtitle').textContent='Inicia sesión para continuar';hideErr();}
-function showRegister(){document.getElementById('form-login').style.display='none';document.getElementById('form-register').style.display='block';document.getElementById('auth-subtitle').textContent='Crea tu cuenta';hideErr();}
+function showRegister(){document.getElementById('form-login').style.display='none';document.getElementById('form-register').style.display='block';document.getElementById('auth-subtitle').textContent='Crear cuenta de empleado';hideErr();}
 async function doLogin(){
   hideErr();
   const email=document.getElementById('login-email').value.trim();
@@ -426,26 +460,45 @@ async function doRegister(){
   const{data,error}=await sb.auth.signUp({email,password:pass,options:{data:{nombre}}});
   if(error){showErr(error.message);return;}
   if(data.user){
-    await sb.from('perfiles').upsert({id:data.user.id,nombre,rol:'empleado'});
-    showToast('Cuenta creada. Revisa tu correo.');showLogin();
+    await sb.from('perfiles').upsert({id:data.user.id,nombre,rol:'empleado',sucursal_id:null});
+    showToast('Cuenta creada. Espera activación del dueño.');
+    showLogin();
   }
 }
 async function doLogout(){await sb.auth.signOut();user=null;perfil=null;sucursalActual=null;showAuthScreen();}
 
+// ---- CHECK ACTIVATION ----
+async function checkActivation(){
+  const{data:p}=await sb.from('perfiles').select('*,sucursales(*)').eq('id',user.id).single();
+  if(p&&p.sucursal_id){
+    perfil=p;sucursalActual=p.sucursales;
+    await launchApp();
+  } else {
+    showToast('Aún pendiente. Contacta al dueño.','danger');
+  }
+}
+
 // ---- SCREENS ----
-function showLoadingScreen(){document.getElementById('loading-screen').style.display='flex';document.getElementById('auth-screen').style.display='none';document.getElementById('app').style.display='none';}
-function showAuthScreen(){document.getElementById('loading-screen').style.display='none';document.getElementById('auth-screen').style.display='flex';document.getElementById('app').style.display='none';}
-function showApp(){document.getElementById('loading-screen').style.display='none';document.getElementById('auth-screen').style.display='none';document.getElementById('app').style.display='flex';}
+function showLoadingScreen(){document.getElementById('loading-screen').style.display='flex';document.getElementById('auth-screen').style.display='none';document.getElementById('wait-screen').style.display='none';document.getElementById('app').style.display='none';}
+function showAuthScreen(){document.getElementById('loading-screen').style.display='none';document.getElementById('auth-screen').style.display='flex';document.getElementById('wait-screen').style.display='none';document.getElementById('app').style.display='none';}
+function showWaitScreen(){document.getElementById('loading-screen').style.display='none';document.getElementById('auth-screen').style.display='none';document.getElementById('wait-screen').style.display='flex';document.getElementById('app').style.display='none';document.getElementById('wait-email').textContent=user?.email||'';}
+function showApp(){document.getElementById('loading-screen').style.display='none';document.getElementById('auth-screen').style.display='none';document.getElementById('wait-screen').style.display='none';document.getElementById('app').style.display='flex';}
 
 // ---- INIT ----
 async function initApp(u){
   user=u;
   const{data:p}=await sb.from('perfiles').select('*,sucursales(*)').eq('id',u.id).single();
-  perfil=p||{id:u.id,nombre:u.email,rol:'empleado'};
-  if(!perfil.sucursal_id){
-    const{data:sucs}=await sb.from('sucursales').select('*').limit(1);
-    if(sucs&&sucs.length){await sb.from('perfiles').update({sucursal_id:sucs[0].id}).eq('id',u.id);perfil.sucursal_id=sucs[0].id;perfil.sucursales=sucs[0];}
+  if(!p){
+    // Perfil no existe, crear uno pendiente
+    await sb.from('perfiles').upsert({id:u.id,nombre:u.user_metadata?.nombre||u.email,rol:'empleado',sucursal_id:null});
+    showWaitScreen();return;
   }
+  perfil=p;
+  if(!perfil.sucursal_id){showWaitScreen();return;}
+  await launchApp();
+}
+
+async function launchApp(){
   sucursalActual=perfil.sucursales||{id:perfil.sucursal_id,nombre:'Mi sucursal'};
   document.getElementById('sucursal-badge').textContent=sucursalActual?.nombre||'';
   document.getElementById('gnav-admin').style.display=perfil.rol==='dueno'?'flex':'none';
@@ -529,7 +582,7 @@ async function cobrarPedido(){
   pedidoActual=null;goLista();switchGNav('caja');
 }
 
-// ---- TABS DETALLE ----
+// ---- TABS ----
 function switchTab(tab){
   ['consumo','agregar','cuenta'].forEach(t=>{document.getElementById('mt-'+t).style.display=t===tab?'block':'none';document.getElementById('tab-'+t).classList.toggle('active',t===tab);});
   if(tab==='consumo')renderConsumo();
@@ -543,7 +596,6 @@ async function loadMenu(){
   const{data}=await sb.from('menu').select('*').eq('sucursal_id',sucursalActual.id).eq('activo',true).order('categoria');
   menuItems=data||[];
 }
-
 function renderMenuPicks(){
   const el=document.getElementById('menu-picks');
   if(!menuItems.length){el.innerHTML='<div class="empty">Menú vacío.</div>';return;}
@@ -553,19 +605,17 @@ function renderMenuPicks(){
   let html='';
   cats.forEach(cat=>{
     const items=filtrado.filter(m=>(m.categoria||'General')===cat);
-    html+=`<div class="slabel">${getCatIcon(cat)} ${cat}</div>`;
-    html+='<div class="menu-grid">';
+    html+=`<div class="slabel">${getCatIcon(cat)} ${cat}</div><div class="menu-grid">`;
     html+=items.map(m=>`<div class="menu-grid-item" onclick="agregarDesdeMenu('${m.id}')">
-      ${prodImg(m,'md').replace('prod-img','mgi-img').replace('cat-icon','mgi-icon')}
+      ${m.imagen_url?`<img class="mgi-img" src="${m.imagen_url}" alt="${m.nombre}" onerror="this.outerHTML='<div class=\\"mgi-icon\\">${getCatIcon(m.categoria)}</div>'">`:`<div class="mgi-icon">${getCatIcon(m.categoria)}</div>`}
       <div class="mgi-name">${m.nombre}</div>
       <div class="mgi-price">${fmtPrice(m.precio_usd)} c/u</div>
-      <span class="pill ${m.tipo} mgi-pill">${m.tipo==='combo'?`Combo ${m.unidades_combo} ${m.unidad}s`:'Suelta'}</span>
+      <span class="pill ${m.tipo} mgi-pill">${m.tipo==='combo'?`${m.unidades_combo} ${m.unidad}s`:'Suelta'}</span>
     </div>`).join('');
     html+='</div>';
   });
   el.innerHTML=html||'<div class="empty">Sin resultados.</div>';
 }
-
 async function agregarDesdeMenu(menuId){
   const prod=menuItems.find(m=>m.id===menuId);if(!prod)return;
   let cant=1;
@@ -576,10 +626,8 @@ async function agregarDesdeMenu(menuId){
   pedidoActual.pedido_items.push(data);
   feedback();switchTab('consumo');
 }
-
 function toggleCustom(){const f=document.getElementById('custom-form');f.style.display=f.style.display==='none'?'block':'none';}
 function toggleTipo(){const v=document.getElementById('tipo-item').value;document.getElementById('f-combo').style.display=v==='combo'?'block':'none';document.getElementById('f-suelto').style.display=v==='suelto'?'block':'none';}
-
 async function agregarItemCustom(){
   const tipo=document.getElementById('tipo-item').value;
   const nombre=document.getElementById('item-nombre').value.trim();
@@ -594,7 +642,6 @@ async function agregarItemCustom(){
   document.getElementById('custom-form').style.display='none';
   feedback();switchTab('consumo');
 }
-
 async function consumir(itemId,delta){
   const item=(pedidoActual.pedido_items||[]).find(i=>i.id===itemId);if(!item)return;
   const n=item.consumido+delta;if(n<0||n>item.total)return;
@@ -607,7 +654,6 @@ async function quitarItem(itemId){
   pedidoActual.pedido_items=(pedidoActual.pedido_items||[]).filter(i=>i.id!==itemId);
   renderConsumo();
 }
-
 function renderConsumo(){
   const el=document.getElementById('consumo-list');
   if(!pedidoActual||(pedidoActual.pedido_items||[]).length===0){el.innerHTML='<div class="empty"><i class="ti ti-shopping-bag"></i>Sin ítems.<br>Ve a "Agregar".</div>';return;}
@@ -617,7 +663,7 @@ function renderConsumo(){
     const fc=pct>=100?'full':pct>=70?'warn':'';
     const esCombo=item.tipo==='combo';
     const sub=esCombo?`<strong>${restante}</strong> de ${item.total} ${item.unidad}s restantes`:`${item.consumido} de ${item.total} pedida${item.total>1?'s':''}`;
-    const imgHtml=item.imagen_url?`<img class="prod-img-sm" src="${item.imagen_url}" alt="${item.nombre}" onerror="this.style.display='none'">`:`<div class="cat-icon-sm">${getCatIcon(item.categoria||'default')}</div>`;
+    const imgHtml=item.imagen_url?`<img class="prod-img-sm" src="${item.imagen_url}" alt="${item.nombre}" onerror="this.outerHTML='<div class=\\"cat-icon-sm\\">${getCatIcon(item.categoria)}</div>'">`:`<div class="cat-icon-sm">${getCatIcon(item.categoria||'default')}</div>`;
     return`<div class="item-row">
       ${imgHtml}
       <div class="ii"><div class="in">${item.nombre}</div>
@@ -633,7 +679,6 @@ function renderConsumo(){
     </div>`;
   }).join('');
 }
-
 function renderCuenta(){
   const el=document.getElementById('cuenta-list');
   if(!pedidoActual||(pedidoActual.pedido_items||[]).length===0){el.innerHTML='<div class="empty">Sin ítems.</div>';document.getElementById('cuenta-total').innerHTML='';return;}
@@ -641,10 +686,8 @@ function renderCuenta(){
   el.innerHTML=(pedidoActual.pedido_items||[]).map(item=>{const sub=item.consumido*item.precio_usd;total+=sub;return`<div class="res-row"><span>${item.nombre} × ${item.consumido}</span>${fmtDual(sub)}</div>`;}).join('');
   document.getElementById('cuenta-total').innerHTML=fmtDual(total);
 }
-
 function toggleMenuForm(){const f=document.getElementById('menu-form');f.style.display=f.style.display==='none'?'block':'none';}
 function toggleMfTipo(){document.getElementById('mf-combo-f').style.display=document.getElementById('mf-tipo').value==='combo'?'block':'none';}
-
 async function guardarMenuProduct(){
   const tipo=document.getElementById('mf-tipo').value;
   const nombre=document.getElementById('mf-nombre').value.trim();
@@ -663,7 +706,6 @@ async function eliminarMenuProduct(id){
   await sb.from('menu').update({activo:false}).eq('id',id);
   await loadMenu();renderMenu();
 }
-
 function renderMenu(){
   const el=document.getElementById('menu-list');
   if(!menuItems.length){el.innerHTML='<div class="empty"><i class="ti ti-book"></i>Menú vacío.</div>';return;}
@@ -673,8 +715,8 @@ function renderMenu(){
   el.innerHTML=cats.map(cat=>{
     const items=filtrado.filter(m=>(m.categoria||'General')===cat);
     return`<div class="card"><div class="ch">${getCatIcon(cat)} ${cat}</div>${items.map(m=>`<div class="mi">
-      ${prodImg(m,'sm')}
-      <div class="mi-info" style="flex:1;min-width:0">
+      ${m.imagen_url?`<img class="prod-img-sm" src="${m.imagen_url}" alt="${m.nombre}" onerror="this.outerHTML='<div class=\\"cat-icon-sm\\">${getCatIcon(m.categoria)}</div>'">`:`<div class="cat-icon-sm">${getCatIcon(m.categoria||'default')}</div>`}
+      <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:600">${m.nombre} <span class="pill ${m.tipo}" style="font-size:10px;margin-left:4px">${m.tipo==='combo'?'Combo':'Suelta'}</span></div>
         <div style="font-size:12px;color:var(--text2);margin-top:2px">${m.tipo==='combo'?m.unidades_combo+' '+m.unidad+'s · ':''}${fmtPrice(m.precio_usd)} por ${m.unidad}</div>
       </div>
@@ -716,7 +758,28 @@ async function renderCaja(){
       </div>
     </div>`;
   }).join('');
-  document.getElementById('caja-productos').innerHTML='<div style="color:var(--text2);font-size:13px;padding:4px 0">Próximamente: detalle por producto.</div>';
+  // Por producto
+  const pel=document.getElementById('caja-productos');
+  if(!registros.length){pel.innerHTML='<div class="empty">Sin ventas registradas.</div>';return;}
+  // Obtener items de los pedidos cobrados hoy
+  const pedidoIds=registros.map(r=>r.pedido_id).filter(Boolean);
+  if(!pedidoIds.length){pel.innerHTML='<div class="empty">Sin detalle disponible.</div>';return;}
+  const{data:items}=await sb.from('pedido_items').select('*').in('pedido_id',pedidoIds);
+  const res={};
+  (items||[]).forEach(i=>{
+    if(!res[i.nombre])res[i.nombre]={nombre:i.nombre,cant:0,total:0};
+    res[i.nombre].cant+=i.consumido;res[i.nombre].total+=i.consumido*i.precio_usd;
+  });
+  const sorted=Object.values(res).sort((a,b)=>b.total-a.total);
+  pel.innerHTML=sorted.map((r,idx)=>`<div class="res-row">
+    <div><span style="font-size:12px;color:var(--text2);margin-right:6px">${idx+1}.</span>
+    <span style="font-size:13px;font-weight:600">${r.nombre}</span>
+    <span style="font-size:12px;color:var(--text2);margin-left:6px">× ${r.cant}</span></div>
+    <div style="text-align:right">
+      <div style="font-size:13px;font-weight:600;color:var(--success)">${fmtUSD(r.total)}</div>
+      <div style="font-size:11px;color:var(--text2)">Bs ${Math.round(r.total*tasa()).toLocaleString('es-VE')}</div>
+    </div>
+  </div>`).join('');
 }
 async function resetCaja(){if(!confirm('¿Iniciar nueva jornada?'))return;showToast('Nueva jornada iniciada');renderCaja();}
 
@@ -748,8 +811,7 @@ async function renderSucursales(){
         <div style="font-size:12px;color:var(--text2)">${s.ciudad||''} ${s.direccion?'· '+s.direccion:''}</div>
       </div>
       <div style="display:flex;gap:6px;align-items:center">
-        ${s.id===sucursalActual?.id?'<span class="pill cobrado">Activa</span>':''}
-        <button class="btn sm" onclick="cambiarSucursal('${s.id}','${s.nombre}')">Ir</button>
+        ${s.id===sucursalActual?.id?'<span class="pill cobrado">Activa</span>':'<button class="btn sm" onclick="cambiarSucursal(\''+s.id+'\',\''+s.nombre+'\')">Ir</button>'}
       </div>
     </div>`).join('');
 }
@@ -762,24 +824,51 @@ async function cambiarSucursal(id,nombre){
 }
 async function renderUsuarios(){
   const{data:users}=await sb.from('perfiles').select('*,sucursales(nombre)').order('created_at');
+  const{data:sucs}=await sb.from('sucursales').select('id,nombre').order('nombre');
   const el=document.getElementById('usuarios-list');
-  if(!users||!users.length){el.innerHTML='<div class="empty">Sin usuarios.</div>';return;}
-  el.innerHTML=users.map(u=>`
-    <div class="cli-card">
-      <div style="display:flex;align-items:center;gap:10px">
+  if(!users||!users.length){el.innerHTML='<div class="empty">Sin usuarios registrados.</div>';return;}
+  const pending=users.filter(u=>!u.sucursal_id);
+  const active=users.filter(u=>u.sucursal_id);
+  const pb=document.getElementById('pending-banner');
+  const pc=document.getElementById('pending-count');
+  if(pending.length){pb.style.display='flex';pc.textContent=`${pending.length} usuario${pending.length>1?'s':''} pendiente${pending.length>1?'s':''} de activación`;}
+  else pb.style.display='none';
+  const sucOptions=sucs?sucs.map(s=>`<option value="${s.id}">${s.nombre}</option>`).join(''):'';
+  const renderUser=(u,isPending)=>`
+    <div class="user-card ${isPending?'pending':''}">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:${isPending?'10':'0'}px">
         <div class="avatar">${ini(u.nombre||u.id)}</div>
-        <div style="flex:1"><div style="font-size:14px;font-weight:600">${u.nombre||'Sin nombre'}</div>
-          <div style="font-size:12px;color:var(--text2)">${u.sucursales?.nombre||'Sin sucursal'}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600">${u.nombre||'Sin nombre'}</div>
+          <div style="font-size:12px;color:var(--text2)">${u.sucursales?.nombre||'<span style="color:var(--warning)">Sin sucursal asignada</span>'}</div>
         </div>
-        <select onchange="cambiarRol('${u.id}',this.value)" style="padding:4px 8px;border-radius:var(--radius);border:.5px solid var(--border2);background:var(--bg);color:var(--text);font-size:12px;font-family:inherit">
+        <span class="pill ${u.rol||'empleado'}">${u.rol==='dueno'?'Dueño':u.rol==='empleado'?'Empleado':'Pendiente'}</span>
+      </div>
+      ${isPending?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="suc-sel-${u.id}" style="flex:1;padding:6px 8px;border-radius:var(--radius);border:.5px solid var(--border2);background:var(--bg);color:var(--text);font-size:13px;font-family:inherit">
+          <option value="">Seleccionar sucursal...</option>${sucOptions}
+        </select>
+        <button class="btn sm success" onclick="activarUsuario('${u.id}')"><i class="ti ti-check"></i> Activar</button>
+      </div>`:`<div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+        <select onchange="cambiarRol('${u.id}',this.value)" style="padding:5px 8px;border-radius:var(--radius);border:.5px solid var(--border2);background:var(--bg);color:var(--text);font-size:12px;font-family:inherit">
           <option value="dueno" ${u.rol==='dueno'?'selected':''}>Dueño</option>
           <option value="empleado" ${u.rol==='empleado'?'selected':''}>Empleado</option>
-          <option value="cliente" ${u.rol==='cliente'?'selected':''}>Cliente</option>
         </select>
-      </div>
-    </div>`).join('');
+        <select onchange="cambiarSucursalUsuario('${u.id}',this.value)" style="flex:1;padding:5px 8px;border-radius:var(--radius);border:.5px solid var(--border2);background:var(--bg);color:var(--text);font-size:12px;font-family:inherit">
+          ${sucs?sucs.map(s=>`<option value="${s.id}" ${u.sucursal_id===s.id?'selected':''}>${s.nombre}</option>`).join(''):''}
+        </select>
+      </div>`}
+    </div>`;
+  el.innerHTML=[...pending.map(u=>renderUser(u,true)),...active.map(u=>renderUser(u,false))].join('');
+}
+async function activarUsuario(userId){
+  const sucId=document.getElementById('suc-sel-'+userId)?.value;
+  if(!sucId){showToast('Selecciona una sucursal','danger');return;}
+  await sb.from('perfiles').update({sucursal_id:sucId,rol:'empleado'}).eq('id',userId);
+  showToast('Usuario activado ✓');renderUsuarios();
 }
 async function cambiarRol(userId,rol){await sb.from('perfiles').update({rol}).eq('id',userId);showToast('Rol actualizado ✓');}
+async function cambiarSucursalUsuario(userId,sucId){await sb.from('perfiles').update({sucursal_id:sucId}).eq('id',userId);showToast('Sucursal actualizada ✓');}
 
 // ---- BOOT ----
 applyDark();
