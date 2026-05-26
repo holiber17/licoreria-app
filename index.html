@@ -858,7 +858,11 @@ async function guardarSucursal(){
   showToast('Sucursal creada ✓');renderSucursales();
 }
 async function renderSucursales(){
-  const{data:sucs}=await sb.from('sucursales').select('*').order('created_at');
+  const token=await getToken();
+  const sRes=await fetch(SUPA_URL+'/rest/v1/sucursales?select=*&order=created_at',{
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+  });
+  const sucs=sRes.ok?await sRes.json():[];
   const el=document.getElementById('sucursales-list');
   if(!sucs||!sucs.length){el.innerHTML='<div class="empty">Sin sucursales.</div>';return;}
   el.innerHTML=sucs.map(s=>`
@@ -879,8 +883,17 @@ async function cambiarSucursal(id,nombre){
   await loadMenu();renderPedidos();renderSucursales();
 }
 async function renderUsuarios(){
-  const{data:users}=await sb.from('perfiles').select('*,sucursales(nombre)').order('created_at');
-  const{data:sucs}=await sb.from('sucursales').select('id,nombre').order('nombre');
+  const tokenKey=Object.keys(localStorage).find(k=>k.includes('auth-token')||k.includes('supabase'));
+  const stored=JSON.parse(localStorage.getItem(tokenKey)||'{}');
+  const token=stored?.access_token||SUPA_KEY;
+  const uRes=await fetch(SUPA_URL+'/rest/v1/perfiles?select=*,sucursales(nombre)&order=created_at',{
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+  });
+  const users=uRes.ok?await uRes.json():[];
+  const sRes=await fetch(SUPA_URL+'/rest/v1/sucursales?select=id,nombre&order=nombre',{
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+  });
+  const sucs=sRes.ok?await sRes.json():[];
   const el=document.getElementById('usuarios-list');
   if(!users||!users.length){el.innerHTML='<div class="empty">Sin usuarios registrados.</div>';return;}
   const pending=users.filter(u=>!u.sucursal_id);
@@ -917,14 +930,27 @@ async function renderUsuarios(){
     </div>`;
   el.innerHTML=[...pending.map(u=>renderUser(u,true)),...active.map(u=>renderUser(u,false))].join('');
 }
+async function getToken(){
+  const tokenKey=Object.keys(localStorage).find(k=>k.includes('auth-token')||k.includes('supabase'));
+  const stored=JSON.parse(localStorage.getItem(tokenKey)||'{}');
+  return stored?.access_token||SUPA_KEY;
+}
+async function sbPatch(table,id,data){
+  const token=await getToken();
+  return fetch(SUPA_URL+'/rest/v1/'+table+'?id=eq.'+id,{
+    method:'PATCH',
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify(data)
+  });
+}
 async function activarUsuario(userId){
   const sucId=document.getElementById('suc-sel-'+userId)?.value;
   if(!sucId){showToast('Selecciona una sucursal','danger');return;}
-  await sb.from('perfiles').update({sucursal_id:sucId,rol:'empleado'}).eq('id',userId);
+  await sbPatch('perfiles',userId,{sucursal_id:sucId,rol:'empleado'});
   showToast('Usuario activado ✓');renderUsuarios();
 }
-async function cambiarRol(userId,rol){await sb.from('perfiles').update({rol}).eq('id',userId);showToast('Rol actualizado ✓');}
-async function cambiarSucursalUsuario(userId,sucId){await sb.from('perfiles').update({sucursal_id:sucId}).eq('id',userId);showToast('Sucursal actualizada ✓');}
+async function cambiarRol(userId,rol){await sbPatch('perfiles',userId,{rol});showToast('Rol actualizado ✓');}
+async function cambiarSucursalUsuario(userId,sucId){await sbPatch('perfiles',userId,{sucursal_id:sucId});showToast('Sucursal actualizada ✓');}
 
 // ---- BOOT ----
 applyDark();
