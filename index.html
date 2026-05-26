@@ -872,9 +872,36 @@ async function cambiarSucursalUsuario(userId,sucId){await sb.from('perfiles').up
 
 // ---- BOOT ----
 applyDark();
+
+// Timeout de seguridad: si en 6 segundos no hay respuesta, mostrar login
+const bootTimeout = setTimeout(()=>{
+  console.warn('Boot timeout — mostrando login');
+  showAuthScreen();
+}, 6000);
+
+// Intentar sesión existente primero (para recargas)
+sb.auth.getSession().then(async({data:{session}})=>{
+  clearTimeout(bootTimeout);
+  if(session?.user){
+    showLoadingScreen();
+    await initApp(session.user);
+  } else {
+    showAuthScreen();
+  }
+}).catch(()=>{
+  clearTimeout(bootTimeout);
+  showAuthScreen();
+});
+
+// Escuchar cambios de sesión (login/logout)
 sb.auth.onAuthStateChange(async(event,session)=>{
-  if(session?.user){showLoadingScreen();await initApp(session.user);}
-  else showAuthScreen();
+  if(event==='SIGNED_IN'&&session?.user){
+    clearTimeout(bootTimeout);
+    showLoadingScreen();
+    await initApp(session.user);
+  } else if(event==='SIGNED_OUT'){
+    showAuthScreen();
+  }
 });
 </script>
 </body>
