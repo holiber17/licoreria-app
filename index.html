@@ -487,15 +487,21 @@ function showApp(){document.getElementById('loading-screen').style.display='none
 // ---- INIT ----
 async function initApp(u){
   user=u;
-  const{data:p}=await sb.from('perfiles').select('*,sucursales(*)').eq('id',u.id).single();
-  if(!p){
-    // Perfil no existe, crear uno pendiente
-    await sb.from('perfiles').upsert({id:u.id,nombre:u.user_metadata?.nombre||u.email,rol:'empleado',sucursal_id:null});
-    showWaitScreen();return;
+  try{
+    const{data:p}=await sb.from('perfiles').select('id,nombre,rol,sucursal_id').eq('id',u.id).single();
+    if(!p){
+      await sb.from('perfiles').upsert({id:u.id,nombre:u.user_metadata?.nombre||u.email,rol:'empleado',sucursal_id:null});
+      showWaitScreen();return;
+    }
+    perfil=p;
+    if(!perfil.sucursal_id){showWaitScreen();return;}
+    const{data:suc}=await sb.from('sucursales').select('id,nombre,ciudad').eq('id',perfil.sucursal_id).single();
+    perfil.sucursales=suc||{id:perfil.sucursal_id,nombre:'Mi sucursal'};
+    await launchApp();
+  }catch(err){
+    console.error('initApp error:',err);
+    showAuthScreen();
   }
-  perfil=p;
-  if(!perfil.sucursal_id){showWaitScreen();return;}
-  await launchApp();
 }
 
 async function launchApp(){
