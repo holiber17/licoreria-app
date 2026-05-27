@@ -445,6 +445,69 @@ function fmtDual(n){
 function beep(){try{const c=new(window.AudioContext||window.webkitAudioContext)();const o=c.createOscillator();const g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=520;g.gain.setValueAtTime(.12,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.1);o.start();o.stop(c.currentTime+.1);}catch(e){}}
 function vibrate(){if(navigator.vibrate)navigator.vibrate(30);}
 function feedback(){beep();vibrate();}
+
+// ---- NOTIFICACIONES ----
+let notifPermiso = false;
+let notificadosHoy = new Set(JSON.parse(localStorage.getItem('notif_hoy')||'[]'));
+
+async function pedirPermisoNotif(){
+  if(!('Notification' in window))return;
+  if(Notification.permission === 'granted'){notifPermiso=true;return;}
+  if(Notification.permission !== 'denied'){
+    const perm = await Notification.requestPermission();
+    notifPermiso = perm === 'granted';
+  }
+}
+
+function notifUltimaUnidad(itemNombre, pedidoNombre){
+  const key = itemNombre+'|'+pedidoNombre;
+  if(notificadosHoy.has(key))return;
+  notificadosHoy.add(key);
+  localStorage.setItem('notif_hoy', JSON.stringify([...notificadosHoy]));
+
+  // Sonido de alerta
+  try{
+    const c=new(window.AudioContext||window.webkitAudioContext)();
+    [523,659,784].forEach((freq,i)=>{
+      const o=c.createOscillator();const g=c.createGain();
+      o.connect(g);g.connect(c.destination);
+      o.frequency.value=freq;
+      g.gain.setValueAtTime(.15,c.currentTime+i*.15);
+      g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.15+.12);
+      o.start(c.currentTime+i*.15);o.stop(c.currentTime+i*.15+.12);
+    });
+  }catch(e){}
+
+  // Vibración larga
+  if(navigator.vibrate)navigator.vibrate([200,100,200]);
+
+  // Toast en app
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;top:80px;left:50%;transform:translateX(-50%);background:var(--warning-bg);color:var(--warning);padding:12px 18px;border-radius:var(--radius-lg);font-size:13px;font-weight:600;z-index:999;border:.5px solid var(--warning);box-shadow:0 4px 20px rgba(0,0,0,.2);display:flex;align-items:center;gap:8px;max-width:320px;text-align:center';
+  t.innerHTML='<i class="ti ti-alert-triangle" style="font-size:20px;flex-shrink:0"></i><span>⚠️ <strong>'+itemNombre+'</strong><br>¡Última unidad! ('+pedidoNombre+')</span>';
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),5000);
+
+  // Notificación del navegador
+  if(notifPermiso && Notification.permission==='granted'){
+    new Notification('⚠️ Última unidad', {
+      body: itemNombre+' — queda 1 unidad ('+pedidoNombre+')',
+      icon: '/licoreria-app/icon.svg',
+      badge: '/licoreria-app/icon.svg',
+      tag: key,
+      requireInteraction: true
+    });
+  }
+}
+
+function checkNotificaciones(){
+  if(!pedidoActual)return;
+  (pedidoActual.pedido_items||[]).forEach(item=>{
+    if(item.tipo==='combo' && (item.total - item.consumido) === 1){
+      notifUltimaUnidad(item.nombre, pedidoActual.cliente_nombre);
+    }
+  });
+}
 function showErr(msg){const el=document.getElementById('auth-error');el.textContent=msg;el.style.display='block';}
 function hideErr(){document.getElementById('auth-error').style.display='none';}
 function showToast(msg,type='success'){
@@ -586,6 +649,7 @@ async function launchApp(){
   applyDark();setMoneda(moneda);
   document.getElementById('tasa-input').value=tasaBCV;
   showApp();
+  pedirPermisoNotif();
   await loadMenu();await renderPedidos();
   fetchBCV();setInterval(fetchBCV,30*60*1000);
 }
@@ -756,7 +820,7 @@ async function consumir(itemId,delta){
   const n=item.consumido+delta;if(n<0||n>item.total)return;
   item.consumido=n;
   await sb.from('pedido_items').update({consumido:n}).eq('id',itemId);
-  feedback();renderConsumo();
+  feedback();renderConsumo();checkNotificaciones();
 }
 async function quitarItem(itemId){
   await sb.from('pedido_items').delete().eq('id',itemId);
