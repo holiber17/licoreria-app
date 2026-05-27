@@ -230,7 +230,8 @@ function renderPedido(pedido){
 
 // ---- NOTIFICACIONES CLIENTE ----
 let notifPermiso = false;
-let notificadosYa = new Set();
+let notificadosYa = new Set(JSON.parse(sessionStorage.getItem('notif_'+pedidoId)||'[]'));
+function saveNotif(){sessionStorage.setItem('notif_'+pedidoId,JSON.stringify([...notificadosYa]));}
 let pedidoAnterior = null;
 
 async function pedirPermiso(){
@@ -263,7 +264,7 @@ function checkNotifCliente(items){
     const restante=item.total-item.consumido;
     const key=item.id+'_ultima';
     if(restante===1 && !notificadosYa.has(key)){
-      notificadosYa.add(key);
+      notificadosYa.add(key);saveNotif();
       alertaSonido();
       // Toast en página
       const t=document.createElement('div');
@@ -284,7 +285,7 @@ function checkNotifCliente(items){
     // Notif agotado
     const keyFull=item.id+'_agotado';
     if(restante===0 && !notificadosYa.has(keyFull)){
-      notificadosYa.add(keyFull);
+      notificadosYa.add(keyFull);saveNotif();
       alertaSonido();
       const t=document.createElement('div');
       t.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#fdf0ee;color:#c0392b;padding:14px 20px;border-radius:14px;font-size:14px;font-weight:600;z-index:999;border:.5px solid #c0392b;box-shadow:0 4px 20px rgba(0,0,0,.2);display:flex;align-items:center;gap:10px;max-width:320px;width:90%';
