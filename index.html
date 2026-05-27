@@ -379,6 +379,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="itabs">
         <button class="itab active" id="atab-sucursales" onclick="switchAdminTab('sucursales')">Sucursales</button>
         <button class="itab" id="atab-usuarios" onclick="switchAdminTab('usuarios')">Usuarios</button>
+        <button class="itab" id="atab-reportes" onclick="switchAdminTab('reportes')">Reportes</button>
       </div>
       <div id="amt-sucursales">
         <div class="top-bar"><h2>Sucursales</h2><button class="btn sm primary" onclick="toggleSucForm()"><i class="ti ti-plus"></i> Nueva</button></div>
@@ -402,6 +403,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <span id="pending-count"></span>
         </div>
         <div id="usuarios-list"></div>
+      </div>
+
+      <!-- REPORTES -->
+      <div id="amt-reportes" style="display:none">
+        <div class="top-bar"><h2>Reportes</h2></div>
+        <!-- Selector período -->
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <button class="btn sm active" id="rep-sem" onclick="switchRepPeriodo('semana')" style="flex:1;justify-content:center">Esta semana</button>
+          <button class="btn sm" id="rep-mes" onclick="switchRepPeriodo('mes')" style="flex:1;justify-content:center">Este mes</button>
+        </div>
+        <!-- Métricas -->
+        <div class="g2" id="rep-metrics"></div>
+        <!-- Tasa BCV del día -->
+        <div class="card" id="rep-tasa-card" style="margin-bottom:10px">
+          <div class="ch">📈 Tasa BCV — Historial</div>
+          <div id="rep-tasa-list"></div>
+        </div>
+        <!-- Productos más vendidos -->
+        <div class="card">
+          <div class="ch">🏆 Productos más vendidos</div>
+          <div id="rep-productos"></div>
+        </div>
+        <!-- Historial de ventas por día -->
+        <div class="card" style="margin-top:10px">
+          <div class="ch">📅 Ventas por día</div>
+          <div id="rep-dias"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -537,6 +565,7 @@ async function fetchBCV(){
     const fecha=d.fechaActualizacion?new Date(d.fechaActualizacion).toLocaleDateString('es-VE',{day:'2-digit',month:'2-digit'}):'';
     b.className='tbadge';b.innerHTML=`<i class="ti ti-check"></i> BCV${fecha?' · '+fecha:''}`;
     renderAll();
+    guardarTasaHoy();
   }catch(e){b.className='tbadge error';b.innerHTML='<i class="ti ti-wifi-off"></i> Manual';}
 }
 
@@ -1027,10 +1056,128 @@ async function resetCaja(){if(!confirm('¿Iniciar nueva jornada?'))return;showTo
 
 // ---- ADMIN ----
 async function loadAdmin(){switchAdminTab('sucursales');}
+let repPeriodo='semana';
+
 function switchAdminTab(tab){
-  ['sucursales','usuarios'].forEach(t=>{document.getElementById('amt-'+t).style.display=t===tab?'block':'none';document.getElementById('atab-'+t).classList.toggle('active',t===tab);});
+  ['sucursales','usuarios','reportes'].forEach(t=>{
+    const el=document.getElementById('amt-'+t);
+    const btn=document.getElementById('atab-'+t);
+    if(el)el.style.display=t===tab?'block':'none';
+    if(btn)btn.classList.toggle('active',t===tab);
+  });
   if(tab==='sucursales')renderSucursales();
   if(tab==='usuarios')renderUsuarios();
+  if(tab==='reportes')renderReportes();
+}
+
+function switchRepPeriodo(p){
+  repPeriodo=p;
+  document.getElementById('rep-sem').classList.toggle('primary',p==='semana');
+  document.getElementById('rep-mes').classList.toggle('primary',p==='mes');
+  renderReportes();
+}
+
+async function guardarTasaHoy(){
+  if(!sucursalActual)return;
+  const token=await getToken();
+  const tasaHoy=tasa();
+  await fetch(SUPA_URL+'/rest/v1/tasas_bcv',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+    body:JSON.stringify({sucursal_id:sucursalActual.id,tasa:tasaHoy,fecha:new Date().toISOString().split('T')[0]})
+  });
+}
+
+async function renderReportes(){
+  if(!sucursalActual)return;
+  const token=await getToken();
+  const hoy=new Date();
+  let desde=new Date(hoy);
+  if(repPeriodo==='semana'){desde.setDate(hoy.getDate()-7);}
+  else{desde.setDate(1);}
+  const desdeStr=desde.toISOString().split('T')[0];
+
+  // Obtener datos de caja
+  const cajaRes=await fetch(SUPA_URL+'/rest/v1/caja?select=*&sucursal_id=eq.'+sucursalActual.id+'&fecha=gte.'+desdeStr+'T00:00:00&order=fecha.asc',{
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+  });
+  const caja=cajaRes.ok?await cajaRes.json():[];
+
+  // Métricas generales
+  const totalUSD=caja.reduce((s,p)=>s+parseFloat(p.total_usd||0),0);
+  const num=caja.length;
+  const ticket=num>0?totalUSD/num:0;
+  const totalBs=caja.reduce((s,p)=>s+(parseFloat(p.total_usd||0)*parseFloat(p.tasa_bcv||tasa())),0);
+
+  document.getElementById('rep-metrics').innerHTML=`
+    <div class="metric"><div class="ml">Total USD</div><div class="mv success">${fmtUSD(totalUSD)}</div></div>
+    <div class="metric"><div class="ml">Total Bs</div><div class="mv success" style="font-size:15px">Bs ${Math.round(totalBs).toLocaleString('es-VE')}</div></div>
+    <div class="metric"><div class="ml">Pedidos</div><div class="mv">${num}</div></div>
+    <div class="metric"><div class="ml">Ticket prom.</div><div class="mv" style="font-size:15px">${fmtUSD(ticket)}</div></div>
+  `;
+
+  // Historial tasa BCV
+  const tasaRes=await fetch(SUPA_URL+'/rest/v1/tasas_bcv?select=*&sucursal_id=eq.'+sucursalActual.id+'&fecha=gte.'+desdeStr+'&order=fecha.desc',{
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+  });
+  const tasas=tasaRes.ok?await tasaRes.json():[];
+  const tasaEl=document.getElementById('rep-tasa-list');
+  if(!tasas.length){tasaEl.innerHTML='<div style="font-size:13px;color:var(--text2);padding:8px 0">Sin historial de tasas aún.</div>';}
+  else{
+    tasaEl.innerHTML=tasas.map(t=>`<div class="res-row">
+      <span style="font-size:13px">${new Date(t.fecha+'T12:00:00').toLocaleDateString('es-VE',{weekday:'short',day:'2-digit',month:'2-digit'})}</span>
+      <span style="font-size:13px;font-weight:600">Bs ${parseFloat(t.tasa).toFixed(2)}/$</span>
+    </div>`).join('');
+  }
+
+  // Productos más vendidos
+  if(caja.length){
+    const pedidoIds=caja.map(c=>c.pedido_id).filter(Boolean);
+    if(pedidoIds.length){
+      const itemsRes=await fetch(SUPA_URL+'/rest/v1/pedido_items?select=*&pedido_id=in.('+pedidoIds.join(',')+')',{
+        headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+      });
+      const items=itemsRes.ok?await itemsRes.json():[];
+      const res={};
+      items.forEach(i=>{
+        if(!res[i.nombre])res[i.nombre]={nombre:i.nombre,cant:0,total:0};
+        res[i.nombre].cant+=i.consumido;
+        res[i.nombre].total+=i.consumido*i.precio_usd;
+      });
+      const sorted=Object.values(res).sort((a,b)=>b.total-a.total).slice(0,10);
+      document.getElementById('rep-productos').innerHTML=sorted.length?sorted.map((r,idx)=>`<div class="res-row">
+        <div><span style="font-size:12px;color:var(--text2);margin-right:6px">${idx+1}.</span>
+        <span style="font-size:13px;font-weight:600">${r.nombre}</span>
+        <span style="font-size:12px;color:var(--text2);margin-left:6px">× ${r.cant}</span></div>
+        <div style="text-align:right">
+          <div style="font-size:13px;font-weight:600;color:var(--success)">${fmtUSD(r.total)}</div>
+          <div style="font-size:11px;color:var(--text2)">Bs ${Math.round(r.total*tasa()).toLocaleString('es-VE')}</div>
+        </div>
+      </div>`).join(''):'<div style="font-size:13px;color:var(--text2);padding:8px 0">Sin ventas en este período.</div>';
+    }
+  } else {
+    document.getElementById('rep-productos').innerHTML='<div style="font-size:13px;color:var(--text2);padding:8px 0">Sin ventas en este período.</div>';
+  }
+
+  // Ventas por día
+  const porDia={};
+  caja.forEach(p=>{
+    const dia=p.fecha.split('T')[0];
+    if(!porDia[dia])porDia[dia]={total:0,pedidos:0};
+    porDia[dia].total+=parseFloat(p.total_usd||0);
+    porDia[dia].pedidos++;
+  });
+  const dias=Object.entries(porDia).sort((a,b)=>b[0].localeCompare(a[0]));
+  document.getElementById('rep-dias').innerHTML=dias.length?dias.map(([dia,d])=>`<div class="res-row">
+    <div>
+      <div style="font-size:13px;font-weight:600">${new Date(dia+'T12:00:00').toLocaleDateString('es-VE',{weekday:'long',day:'2-digit',month:'2-digit'})}</div>
+      <div style="font-size:12px;color:var(--text2)">${d.pedidos} pedido${d.pedidos!==1?'s':''}</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:13px;font-weight:600;color:var(--success)">${fmtUSD(d.total)}</div>
+      <div style="font-size:11px;color:var(--text2)">Bs ${Math.round(d.total*tasa()).toLocaleString('es-VE')}</div>
+    </div>
+  </div>`).join(''):'<div style="font-size:13px;color:var(--text2);padding:8px 0">Sin ventas en este período.</div>';
 }
 function toggleSucForm(){const f=document.getElementById('suc-form');f.style.display=f.style.display==='none'?'block':'none';}
 async function guardarSucursal(){
