@@ -136,6 +136,7 @@ async function loadPedido(){
     }
 
     renderPedido(pedido);
+  checkNotifCliente(pedido.pedido_items||[]);
   }catch(e){
     document.getElementById('content').innerHTML='<div class="empty"><i class="ti ti-wifi-off"></i>Error de conexión.<br>Intenta de nuevo.</div>';
   }
@@ -227,11 +228,90 @@ function renderPedido(pedido){
   document.getElementById('content').innerHTML=html;
 }
 
+// ---- NOTIFICACIONES CLIENTE ----
+let notifPermiso = false;
+let notificadosYa = new Set();
+let pedidoAnterior = null;
+
+async function pedirPermiso(){
+  if(!('Notification' in window))return;
+  if(Notification.permission==='granted'){notifPermiso=true;return;}
+  if(Notification.permission!=='denied'){
+    const p = await Notification.requestPermission();
+    notifPermiso = p==='granted';
+  }
+}
+
+function alertaSonido(){
+  try{
+    const c=new(window.AudioContext||window.webkitAudioContext)();
+    [523,659,784].forEach((freq,i)=>{
+      const o=c.createOscillator();const g=c.createGain();
+      o.connect(g);g.connect(c.destination);
+      o.frequency.value=freq;
+      g.gain.setValueAtTime(.15,c.currentTime+i*.15);
+      g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.15+.12);
+      o.start(c.currentTime+i*.15);o.stop(c.currentTime+i*.15+.12);
+    });
+  }catch(e){}
+  if(navigator.vibrate)navigator.vibrate([200,100,200]);
+}
+
+function checkNotifCliente(items){
+  items.forEach(item=>{
+    if(item.tipo!=='combo')return;
+    const restante=item.total-item.consumido;
+    const key=item.id+'_ultima';
+    if(restante===1 && !notificadosYa.has(key)){
+      notificadosYa.add(key);
+      alertaSonido();
+      // Toast en página
+      const t=document.createElement('div');
+      t.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#fff3d6;color:#8a5a00;padding:14px 20px;border-radius:14px;font-size:14px;font-weight:600;z-index:999;border:.5px solid #8a5a00;box-shadow:0 4px 20px rgba(0,0,0,.2);display:flex;align-items:center;gap:10px;max-width:320px;width:90%';
+      t.innerHTML='<span style="font-size:24px">⚠️</span><span>¡Última unidad de<br><strong>'+item.nombre+'</strong>!</span>';
+      document.body.appendChild(t);
+      setTimeout(()=>t.remove(),6000);
+      // Notificación navegador
+      if(notifPermiso){
+        new Notification('⚠️ ¡Última unidad!',{
+          body:'Solo queda 1 '+item.unidad+' de '+item.nombre,
+          icon:'/licoreria-app/icon.svg',
+          tag:key,
+          requireInteraction:true
+        });
+      }
+    }
+    // Notif agotado
+    const keyFull=item.id+'_agotado';
+    if(restante===0 && !notificadosYa.has(keyFull)){
+      notificadosYa.add(keyFull);
+      alertaSonido();
+      const t=document.createElement('div');
+      t.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#fdf0ee;color:#c0392b;padding:14px 20px;border-radius:14px;font-size:14px;font-weight:600;z-index:999;border:.5px solid #c0392b;box-shadow:0 4px 20px rgba(0,0,0,.2);display:flex;align-items:center;gap:10px;max-width:320px;width:90%';
+      t.innerHTML='<span style="font-size:24px">🚫</span><span>Se agotó<br><strong>'+item.nombre+'</strong></span>';
+      document.body.appendChild(t);
+      setTimeout(()=>t.remove(),6000);
+      if(notifPermiso){
+        new Notification('🚫 Se agotó el combo',{
+          body:item.nombre+' — no quedan unidades',
+          icon:'/licoreria-app/icon.svg',
+          tag:keyFull,
+          requireInteraction:true
+        });
+      }
+    }
+  });
+}
+
 // Iniciar
+pedirPermiso();
 fetchTasa().then(loadPedido);
 
-// Actualizar cada 15 segundos
-setInterval(()=>{fetchTasa().then(loadPedido);}, 15000);
+// Actualizar cada 10 segundos
+setInterval(async()=>{
+  await fetchTasa();
+  await loadPedido();
+}, 10000);
 </script>
 </body>
 </html>
