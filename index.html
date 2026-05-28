@@ -744,7 +744,7 @@ async function refreshPerfilCache(u){
     }
     perfil=p;
     if(!perfil.sucursal_id){showWaitScreen();return;}
-    const suc = await supaFetch('sucursales?select=id,nombre,ciudad&id=eq.'+perfil.sucursal_id, token);
+    const suc = await supaFetch('sucursales?select=id,nombre,ciudad,logo_url,app_nombre&id=eq.'+perfil.sucursal_id, token);
     perfil.sucursales=suc||{id:perfil.sucursal_id,nombre:'Mi sucursal'};
     localStorage.setItem('perfil_cache_'+u.id,JSON.stringify(perfil));
     if(!sucursalActual){await launchApp();}
@@ -1286,7 +1286,7 @@ async function guardarSucursal(){
 }
 async function renderSucursales(){
   const token=await getToken();
-  const sRes=await fetch(SUPA_URL+'/rest/v1/sucursales?select=*&order=created_at',{
+  const sRes=await fetch(SUPA_URL+'/rest/v1/sucursales?select=id,nombre,ciudad,direccion,activa,logo_url,app_nombre&order=created_at',{
     headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
   });
   const sucs=sRes.ok?await sRes.json():[];
