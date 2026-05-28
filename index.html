@@ -435,6 +435,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </div>
         <div id="sucursales-list"></div>
 
+        <!-- Backup -->
+        <div class="card" style="margin-top:10px">
+          <div class="ch">💾 Backup de datos</div>
+          <p style="font-size:13px;color:var(--text2);margin:8px 0 12px">Exporta toda la configuración e historial de tu negocio en un archivo JSON.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn primary" style="flex:1;justify-content:center" onclick="exportarBackup()"><i class="ti ti-download"></i> Exportar backup</button>
+            <button class="btn" style="flex:1;justify-content:center" onclick="document.getElementById('import-file').click()"><i class="ti ti-upload"></i> Importar backup</button>
+          </div>
+          <input type="file" id="import-file" accept=".json" style="display:none" onchange="importarBackup(event)">
+          <div id="backup-status" style="margin-top:10px;font-size:13px;display:none"></div>
+        </div>
+
         <!-- Editor de nombre y logo -->
         <div class="card" style="margin-top:10px" id="suc-branding-card">
           <div class="ch">🎨 Nombre y logo de la app</div>
@@ -1436,6 +1448,139 @@ async function activarUsuario(userId){
 }
 async function cambiarRol(userId,rol){await sbPatch('perfiles',userId,{rol});showToast('Rol actualizado ✓');}
 async function cambiarSucursalUsuario(userId,sucId){await sbPatch('perfiles',userId,{sucursal_id:sucId});showToast('Sucursal actualizada ✓');}
+
+// ---- BACKUP ----
+async function exportarBackup(){
+  if(!sucursalActual)return;
+  const token=await getToken();
+  const status=document.getElementById('backup-status');
+  status.style.display='block';
+  status.innerHTML='<i class="ti ti-refresh"></i> Generando backup...';
+  status.style.color='var(--warning)';
+
+  try{
+    // Obtener menú
+    const menuRes=await fetch(SUPA_URL+'/rest/v1/menu?select=*&sucursal_id=eq.'+sucursalActual.id+'&order=categoria',{
+      headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+    });
+    const menu=menuRes.ok?await menuRes.json():[];
+
+    // Obtener sucursales
+    const sucRes=await fetch(SUPA_URL+'/rest/v1/sucursales?select=*',{
+      headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+    });
+    const sucursales=sucRes.ok?await sucRes.json():[];
+
+    // Obtener caja últimos 90 días
+    const hace90=new Date();hace90.setDate(hace90.getDate()-90);
+    const cajaRes=await fetch(SUPA_URL+'/rest/v1/caja?select=*&sucursal_id=eq.'+sucursalActual.id+'&fecha=gte.'+hace90.toISOString()+'&order=fecha.desc',{
+      headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+    });
+    const caja=cajaRes.ok?await cajaRes.json():[];
+
+    // Obtener historial tasas BCV
+    const tasasRes=await fetch(SUPA_URL+'/rest/v1/tasas_bcv?select=*&sucursal_id=eq.'+sucursalActual.id+'&order=fecha.desc',{
+      headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+    });
+    const tasas=tasasRes.ok?await tasasRes.json():[];
+
+    const backup={
+      version:'1.0',
+      fecha:new Date().toISOString(),
+      negocio:sucursalActual.app_nombre||sucursalActual.nombre,
+      sucursal:sucursalActual,
+      sucursales,
+      menu,
+      caja_90dias:caja,
+      tasas_bcv:tasas,
+      resumen:{
+        total_productos:menu.length,
+        total_ventas_90dias:caja.reduce((s,p)=>s+parseFloat(p.total_usd||0),0).toFixed(2),
+        total_pedidos_90dias:caja.length
+      }
+    };
+
+    // Descargar archivo
+    const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const fecha=new Date().toLocaleDateString('es-VE',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-');
+    a.href=url;
+    a.download=`backup_${(sucursalActual.app_nombre||sucursalActual.nombre).replace(/\s+/g,'_')}_${fecha}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    status.innerHTML=`<i class="ti ti-check"></i> Backup generado: ${menu.length} productos, ${caja.length} ventas (últimos 90 días)`;
+    status.style.color='var(--success)';
+  }catch(e){
+    status.innerHTML='<i class="ti ti-alert-triangle"></i> Error al generar backup';
+    status.style.color='var(--danger)';
+  }
+}
+
+async function importarBackup(event){
+  const file=event.target.files[0];
+  if(!file)return;
+  const status=document.getElementById('backup-status');
+  status.style.display='block';
+  status.innerHTML='<i class="ti ti-refresh"></i> Leyendo archivo...';
+  status.style.color='var(--warning)';
+
+  try{
+    const text=await file.text();
+    const backup=JSON.parse(text);
+
+    if(!backup.version||!backup.menu){
+      status.innerHTML='<i class="ti ti-alert-triangle"></i> Archivo inválido — no es un backup de Eubar';
+      status.style.color='var(--danger)';
+      return;
+    }
+
+    const conf=confirm(`¿Importar backup de "${backup.negocio}" del ${new Date(backup.fecha).toLocaleDateString('es-VE')}?
+
+Esto restaurará ${backup.menu.length} productos del menú.
+
+Los productos actuales NO se borrarán, solo se agregarán los nuevos.`);
+    if(!conf)return;
+
+    const token=await getToken();
+    let importados=0;
+
+    // Importar solo productos que no existan
+    const menuActualRes=await fetch(SUPA_URL+'/rest/v1/menu?select=nombre&sucursal_id=eq.'+sucursalActual.id,{
+      headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+    });
+    const menuActual=menuActualRes.ok?await menuActualRes.json():[];
+    const nombresActuales=new Set(menuActual.map(m=>m.nombre.toLowerCase()));
+
+    for(const prod of backup.menu){
+      if(!nombresActuales.has(prod.nombre.toLowerCase())){
+        await fetch(SUPA_URL+'/rest/v1/menu',{
+          method:'POST',
+          headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+          body:JSON.stringify({
+            sucursal_id:sucursalActual.id,
+            nombre:prod.nombre,tipo:prod.tipo,
+            precio_usd:prod.precio_usd,
+            unidades_combo:prod.unidades_combo,
+            unidad:prod.unidad,categoria:prod.categoria,
+            imagen_url:prod.imagen_url||null,
+            activo:true
+          })
+        });
+        importados++;
+      }
+    }
+
+    await loadMenu();
+    status.innerHTML=`<i class="ti ti-check"></i> Importación completada: ${importados} productos nuevos agregados`;
+    status.style.color='var(--success)';
+    event.target.value='';
+  }catch(e){
+    status.innerHTML='<i class="ti ti-alert-triangle"></i> Error al importar: archivo corrupto o inválido';
+    status.style.color='var(--danger)';
+  }
+}
 
 // ---- MÉTODO DE PAGO ----
 let metodoPago = 'Efectivo';
