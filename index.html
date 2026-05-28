@@ -985,12 +985,12 @@ function renderConsumo(){
       <div class="ii"><div class="in">${item.nombre}</div>
         <div class="is">${sub}${item.precio_usd>0?' · '+fmtPrice(item.precio_usd)+' c/u':''}</div>
         ${esCombo?`<div class="prog-bar"><div class="prog-fill ${fc}" style="width:${pct}%"></div></div>`:''}
+        ${esCombo&&pct>=100?`<button onclick="reabastecer('${item.id}')" style="margin-top:6px;padding:4px 10px;border-radius:99px;border:.5px solid var(--success);background:var(--success-bg);color:var(--success);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">🔄 Reabastecer combo</button>`:''}
       </div>
       <div class="counter">
         <button class="cbtn" onclick="consumir('${item.id}',-1)">−</button>
         <span class="cval">${esCombo?restante:item.consumido}</span>
         <button class="cbtn" onclick="consumir('${item.id}',1)">+</button>
-        ${esCombo?`<button class="cbtn" onclick="reabastecer('${item.id}')" title="Reabastecer" style="font-size:14px">+🔄</button>`:''}
         <button class="btn sm danger" onclick="quitarItem('${item.id}')" style="padding:5px 8px"><i class="ti ti-trash" style="font-size:13px"></i></button>
       </div>
     </div>`;
