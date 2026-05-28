@@ -176,6 +176,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .pdf-total{display:flex;justify-content:space-between;padding:10px 0 0;font-size:15px;font-weight:700;border-top:2px solid #1a1a1a;margin-top:6px;color:#1a1a1a!important}
 .pdf-footer{text-align:center;font-size:11px;color:#a09d97;margin-top:12px;padding-top:8px;border-top:.5px solid #eee}
 /* Modal PDF */
+.metodo-btn{padding:10px 8px;border-radius:var(--radius);border:.5px solid var(--border2);background:var(--bg2);color:var(--text2);font-family:inherit;font-size:13px;cursor:pointer;transition:all .12s;font-weight:500;text-align:center}
+.metodo-btn.active{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:600}
 .pdf-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:flex-end;justify-content:center}
 .pdf-modal.open{display:flex}
 .pdf-modal-inner{background:var(--bg);border-radius:var(--radius-lg) var(--radius-lg) 0 0;padding:20px 16px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
@@ -326,8 +328,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
             <div class="total-row"><span>Total</span><div id="cuenta-total"></div></div>
           </div>
           <div class="af" style="margin-top:10px">
+            <div class="fg"><label>Método de pago</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+                <button class="metodo-btn active" id="mp-Efectivo" onclick="selMetodo('Efectivo')">💵 Efectivo</button>
+                <button class="metodo-btn" id="mp-Zelle" onclick="selMetodo('Zelle')">🏦 Zelle</button>
+                <button class="metodo-btn" id="mp-Pago móvil" onclick="selMetodo('Pago móvil')">📱 Pago móvil</button>
+                <button class="metodo-btn" id="mp-Transferencia" onclick="selMetodo('Transferencia')">💸 Transferencia</button>
+              </div>
+            </div>
             <div class="fg"><label>Nota (opcional)</label>
-              <input id="nota-cobro" placeholder="Ej: Pagó en efectivo...">
+              <input id="nota-cobro" placeholder="Ej: Pagó con billete de $20...">
             </div>
           </div>
           <button class="btn success full" onclick="cobrarPedido()"><i class="ti ti-cash"></i> Registrar cobro y cerrar</button>
@@ -851,7 +861,12 @@ async function cobrarPedido(){
   const nota=document.getElementById('nota-cobro').value.trim();
   if(!confirm(`¿Cobrar ${fmtUSD(total)} (${fmtBs(total)}) a ${pedidoActual.cliente_nombre}?`))return;
   await sb.from('pedidos').update({estado:'cobrado',nota,tasa_bcv:tasa()}).eq('id',pedidoActual.id);
-  await sb.from('caja').insert({sucursal_id:sucursalActual.id,pedido_id:pedidoActual.id,usuario_id:user.id,cliente_nombre:pedidoActual.cliente_nombre,total_usd:total,tasa_bcv:tasa(),nota,fecha:new Date().toISOString()});
+  const token=await getToken();
+  await fetch(SUPA_URL+'/rest/v1/caja',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({sucursal_id:sucursalActual.id,pedido_id:pedidoActual.id,usuario_id:user.id,cliente_nombre:pedidoActual.cliente_nombre,total_usd:total,tasa_bcv:tasa(),nota,metodo_pago:metodoPago,fecha:new Date().toISOString()})
+  });
   feedback();showToast(`Cobrado ${fmtUSD(total)} ✓`);
   pedidoActual=null;goLista();switchGNav('caja');
 }
@@ -1136,7 +1151,7 @@ async function renderCaja(){
     return`<div class="hcard">
       <div style="display:flex;align-items:flex-start;justify-content:space-between">
         <div><div style="font-size:14px;font-weight:600">${p.cliente_nombre}</div>
-        <div style="font-size:12px;color:var(--text2)">${new Date(p.fecha).toLocaleString('es-VE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · BCV ${t.toFixed(2)}${p.nota?' · 📝 '+p.nota:''}</div></div>
+        <div style="font-size:12px;color:var(--text2)">${new Date(p.fecha).toLocaleString('es-VE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · BCV ${t.toFixed(2)} · ${p.metodo_pago||'Efectivo'}${p.nota?' · 📝 '+p.nota:''}</div></div>
         <div style="text-align:right">
           <div style="font-size:14px;font-weight:600;color:var(--success)">${fmtUSD(p.total_usd)}</div>
           <div style="font-size:12px;color:var(--text2)">Bs ${Math.round(p.total_usd*t).toLocaleString('es-VE')}</div>
@@ -1274,6 +1289,28 @@ async function renderReportes(){
     document.getElementById('rep-productos').innerHTML='<div style="font-size:13px;color:var(--text2);padding:8px 0">Sin ventas en este período.</div>';
   }
 
+  // Por método de pago
+  const porMetodo={};
+  caja.forEach(p=>{
+    const m=p.metodo_pago||'Efectivo';
+    if(!porMetodo[m])porMetodo[m]={total:0,pedidos:0};
+    porMetodo[m].total+=parseFloat(p.total_usd||0);
+    porMetodo[m].pedidos++;
+  });
+  const metodosIcons={'Efectivo':'💵','Zelle':'🏦','Pago móvil':'📱','Transferencia':'💸'};
+  const metodosList=Object.entries(porMetodo).sort((a,b)=>b[1].total-a[1].total);
+  // Inject into metrics as extra cards
+  if(metodosList.length){
+    const extraDiv=document.createElement('div');
+    extraDiv.className='card';
+    extraDiv.style.marginBottom='10px';
+    extraDiv.innerHTML='<div class="ch">💳 Por método de pago</div>'+metodosList.map(([m,d])=>`<div class="res-row">
+      <div><span style="font-size:16px;margin-right:8px">${metodosIcons[m]||'💳'}</span><span style="font-size:13px;font-weight:600">${m}</span><span style="font-size:12px;color:var(--text2);margin-left:6px">${d.pedidos} pedido${d.pedidos!==1?'s':''}</span></div>
+      <div style="text-align:right"><div style="font-size:13px;font-weight:600;color:var(--success)">${fmtUSD(d.total)}</div><div style="font-size:11px;color:var(--text2)">Bs ${Math.round(d.total*tasa()).toLocaleString('es-VE')}</div></div>
+    </div>`).join('');
+    document.getElementById('rep-productos').parentNode.insertBefore(extraDiv, document.getElementById('rep-productos').parentNode.children[2]);
+  }
+
   // Ventas por día
   const porDia={};
   caja.forEach(p=>{
@@ -1400,6 +1437,17 @@ async function activarUsuario(userId){
 async function cambiarRol(userId,rol){await sbPatch('perfiles',userId,{rol});showToast('Rol actualizado ✓');}
 async function cambiarSucursalUsuario(userId,sucId){await sbPatch('perfiles',userId,{sucursal_id:sucId});showToast('Sucursal actualizada ✓');}
 
+// ---- MÉTODO DE PAGO ----
+let metodoPago = 'Efectivo';
+
+function selMetodo(m){
+  metodoPago=m;
+  ['Efectivo','Zelle','Pago móvil','Transferencia'].forEach(x=>{
+    const el=document.getElementById('mp-'+x);
+    if(el)el.classList.toggle('active',x===m);
+  });
+}
+
 // ---- BRANDING ----
 let brandLogoBase64 = null;
 
@@ -1521,7 +1569,7 @@ function generarPDFCuenta(){
       <div style="font-size:13px;color:#6b6860">Bs ${Math.round(total*tasaActual).toLocaleString('es-VE')}</div>
     </div>
   </div>
-  <div class="pdf-footer">Tasa BCV: ${tasaActual.toFixed(2)} Bs/$ · Gracias por su preferencia</div>`;
+  <div class="pdf-footer">Método de pago: ${metodoPago} · Tasa BCV: ${tasaActual.toFixed(2)} Bs/$ · Gracias por su preferencia</div>`;
 
   document.getElementById('pdf-content-cuenta').innerHTML=html;
   document.getElementById('pdf-modal-cuenta').classList.add('open');
@@ -1553,7 +1601,7 @@ async function generarPDFCaja(){
   html+=caja.map(p=>`<div class="pdf-row">
     <div>
       <div style="font-size:13px;font-weight:600">${p.cliente_nombre}</div>
-      <div style="font-size:11px;color:#6b6860">${new Date(p.fecha).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit'})}${p.nota?' · '+p.nota:''}</div>
+      <div style="font-size:11px;color:#6b6860">${new Date(p.fecha).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit'})} · ${p.metodo_pago||'Efectivo'}${p.nota?' · '+p.nota:''}</div>
     </div>
     <div style="text-align:right">
       <div>${fmtUSD(p.total_usd)}</div>
