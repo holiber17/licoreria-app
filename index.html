@@ -945,6 +945,26 @@ async function consumir(itemId,delta){
   await sb.from('pedido_items').update({consumido:n}).eq('id',itemId);
   feedback();renderConsumo();checkNotificaciones();
 }
+async function reabastecer(itemId){
+  const item=(pedidoActual.pedido_items||[]).find(i=>i.id===itemId);
+  if(!item)return;
+  const inp=prompt(`¿Cuántas unidades agregar al combo "${item.nombre}"?`,'10');
+  if(inp===null)return;
+  const agregar=parseInt(inp)||0;
+  if(agregar<=0)return;
+  const nuevoTotal=item.total+agregar;
+  item.total=nuevoTotal;
+  const token=await getToken();
+  await fetch(SUPA_URL+'/rest/v1/pedido_items?id=eq.'+itemId,{
+    method:'PATCH',
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({total:nuevoTotal})
+  });
+  feedback();
+  renderConsumo();
+  showToast(`+${agregar} unidades agregadas a ${item.nombre} ✓`);
+}
+
 async function quitarItem(itemId){
   await sb.from('pedido_items').delete().eq('id',itemId);
   pedidoActual.pedido_items=(pedidoActual.pedido_items||[]).filter(i=>i.id!==itemId);
@@ -970,6 +990,7 @@ function renderConsumo(){
         <button class="cbtn" onclick="consumir('${item.id}',-1)">−</button>
         <span class="cval">${esCombo?restante:item.consumido}</span>
         <button class="cbtn" onclick="consumir('${item.id}',1)">+</button>
+        ${esCombo?`<button class="cbtn" onclick="reabastecer('${item.id}')" title="Reabastecer" style="font-size:14px">+🔄</button>`:''}
         <button class="btn sm danger" onclick="quitarItem('${item.id}')" style="padding:5px 8px"><i class="ti ti-trash" style="font-size:13px"></i></button>
       </div>
     </div>`;
