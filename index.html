@@ -245,16 +245,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 
   <div class="content">
-    <div class="tbar">
-      <i class="ti ti-currency-dollar"></i>
-      <span>1 USD =</span>
-      <input id="tasa-input" type="number" min="1" step="0.01" value="530.50" onchange="saveTasa()">
-      <span>Bs</span>
-      <span id="tbadge" class="tbadge loading"><i class="ti ti-refresh"></i> Cargando...</span>
-      <div class="mtoggle">
-        <button class="mtbtn active" id="m-usd" onclick="setMoneda('usd')">USD</button>
-        <button class="mtbtn" id="m-bs" onclick="setMoneda('bs')">Bs</button>
-        <button class="mtbtn" id="m-both" onclick="setMoneda('both')">Ambas</button>
+    <div class="tbar" style="flex-direction:column;align-items:stretch;gap:6px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <i class="ti ti-currency-dollar"></i>
+        <span>1 USD =</span>
+        <input id="tasa-input" type="number" min="1" step="0.01" value="530.50" onchange="saveTasa()" style="width:90px">
+        <span>Bs</span>
+        <i class="ti ti-currency-euro" style="margin-left:8px"></i>
+        <span>1 EUR =</span>
+        <input id="tasa-eur-input" type="number" min="1" step="0.01" value="580.00" onchange="saveTasaEur()" style="width:90px">
+        <span>Bs</span>
+        <span id="tbadge" class="tbadge loading"><i class="ti ti-refresh"></i> Cargando...</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:12px;color:var(--text2)">Mostrar en:</span>
+        <div class="mtoggle">
+          <button class="mtbtn active" id="m-usd" onclick="setMoneda('usd')">USD</button>
+          <button class="mtbtn" id="m-eur" onclick="setMoneda('eur')">EUR</button>
+          <button class="mtbtn" id="m-bs" onclick="setMoneda('bs')">Bs</button>
+          <button class="mtbtn" id="m-both" onclick="setMoneda('both')">Todas</button>
+        </div>
       </div>
     </div>
 
@@ -587,6 +597,7 @@ let user=null,perfil=null,sucursalActual=null,pedidoActual=null,menuItems=[];
 let moneda=localStorage.getItem('moneda')||'both';
 let dark=localStorage.getItem('dark')==='1';
 let tasaBCV=parseFloat(localStorage.getItem('tasa'))||530.50;
+let tasaEUR=parseFloat(localStorage.getItem('tasaEur'))||580.00;
 
 // ---- CATEGORY ICONS ----
 const catIcon={'Ron':'🥃','Cerveza':'🍺','Whisky':'🥃','Vodka':'🍸','Anís':'🌿','Vino':'🍷','Champán':'🍾','Tequila':'🌵','Mezcladores':'🥤','Combos Especiales':'🎉','default':'🍶'};
@@ -603,14 +614,24 @@ function prodImg(item,size='md'){
 // ---- HELPERS ----
 function ini(n){return(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0].toUpperCase()).join('');}
 function tasa(){return parseFloat(document.getElementById('tasa-input')?.value)||tasaBCV;}
+function tasaEur(){return parseFloat(document.getElementById('tasa-eur-input')?.value)||tasaEUR;}
+function saveTasaEur(){tasaEUR=tasaEur();localStorage.setItem('tasaEur',tasaEUR);renderAll();}
 function saveTasa(){tasaBCV=tasa();localStorage.setItem('tasa',tasaBCV);renderAll();}
 function fmtUSD(n){return'$'+(+n||0).toFixed(2);}
 function fmtBs(n){return'Bs '+Math.round((+n||0)*tasa()).toLocaleString('es-VE');}
-function fmtPrice(n){if(moneda==='usd')return fmtUSD(n);if(moneda==='bs')return fmtBs(n);return fmtUSD(n)+' / '+fmtBs(n);}
+function fmtEUR(n){return'€'+(+n||0).toFixed(2);}
+function fmtBsEur(n){return'Bs '+Math.round((+n||0)*tasaEur()).toLocaleString('es-VE');}
+function fmtPrice(n){
+  if(moneda==='usd')return fmtUSD(n);
+  if(moneda==='eur')return fmtEUR(n);
+  if(moneda==='bs')return fmtBs(n);
+  return fmtUSD(n)+' / '+fmtEUR(n)+' / '+fmtBs(n);
+}
 function fmtDual(n){
   if(moneda==='usd')return`<span style="font-size:14px;font-weight:600">${fmtUSD(n)}</span>`;
+  if(moneda==='eur')return`<span style="font-size:14px;font-weight:600">${fmtEUR(n)}</span>`;
   if(moneda==='bs')return`<span style="font-size:14px;font-weight:600">${fmtBs(n)}</span>`;
-  return`<div class="dp"><span class="pusd">${fmtUSD(n)}</span><span class="pbs">${fmtBs(n)}</span></div>`;
+  return`<div class="dp"><span class="pusd">${fmtUSD(n)} · ${fmtEUR(n)}</span><span class="pbs">${fmtBs(n)}</span></div>`;
 }
 function beep(){try{const c=new(window.AudioContext||window.webkitAudioContext)();const o=c.createOscillator();const g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=520;g.gain.setValueAtTime(.12,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.1);o.start();o.stop(c.currentTime+.1);}catch(e){}}
 function vibrate(){if(navigator.vibrate)navigator.vibrate(30);}
@@ -691,20 +712,34 @@ function applyDark(){document.body.classList.toggle('dark',dark);const b=documen
 function toggleDark(){dark=!dark;localStorage.setItem('dark',dark?'1':'0');applyDark();}
 
 // ---- MONEDA ----
-function setMoneda(m){moneda=m;localStorage.setItem('moneda',m);['usd','bs','both'].forEach(x=>{const el=document.getElementById('m-'+x);if(el)el.classList.toggle('active',x===m);});renderAll();}
+function setMoneda(m){moneda=m;localStorage.setItem('moneda',m);['usd','eur','bs','both'].forEach(x=>{const el=document.getElementById('m-'+x);if(el)el.classList.toggle('active',x===m);});renderAll();}
 
 // ---- BCV ----
 async function fetchBCV(){
   const b=document.getElementById('tbadge');if(!b)return;
   b.className='tbadge loading';b.innerHTML='<i class="ti ti-refresh"></i> Cargando...';
   try{
-    const r=await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
-    if(!r.ok)throw new Error();
-    const d=await r.json();
-    const t=parseFloat(d.promedio);if(!t||isNaN(t))throw new Error();
-    document.getElementById('tasa-input').value=t.toFixed(2);
-    tasaBCV=t;localStorage.setItem('tasa',t);
-    const fecha=d.fechaActualizacion?new Date(d.fechaActualizacion).toLocaleDateString('es-VE',{day:'2-digit',month:'2-digit'}):'';
+    // Fetch USD y EUR en paralelo
+    const[rUSD,rEUR]=await Promise.all([
+      fetch('https://ve.dolarapi.com/v1/dolares/oficial'),
+      fetch('https://ve.dolarapi.com/v1/dolares/euro')
+    ]);
+    if(!rUSD.ok)throw new Error();
+    const dUSD=await rUSD.json();
+    const tUSD=parseFloat(dUSD.promedio);if(!tUSD||isNaN(tUSD))throw new Error();
+    document.getElementById('tasa-input').value=tUSD.toFixed(2);
+    tasaBCV=tUSD;localStorage.setItem('tasa',tUSD);
+
+    if(rEUR.ok){
+      const dEUR=await rEUR.json();
+      const tEUR=parseFloat(dEUR.promedio);
+      if(tEUR&&!isNaN(tEUR)){
+        document.getElementById('tasa-eur-input').value=tEUR.toFixed(2);
+        tasaEUR=tEUR;localStorage.setItem('tasaEur',tEUR);
+      }
+    }
+
+    const fecha=dUSD.fechaActualizacion?new Date(dUSD.fechaActualizacion).toLocaleDateString('es-VE',{day:'2-digit',month:'2-digit'}):'';
     b.className='tbadge';b.innerHTML=`<i class="ti ti-check"></i> BCV${fecha?' · '+fecha:''}`;
     renderAll();
     guardarTasaHoy();
@@ -831,6 +866,7 @@ async function launchApp(){
   document.getElementById('gnav-admin').style.display=perfil.rol==='dueno'?'flex':'none';
   applyDark();setMoneda(moneda);
   document.getElementById('tasa-input').value=tasaBCV;
+  if(document.getElementById('tasa-eur-input'))document.getElementById('tasa-eur-input').value=tasaEUR;
   showApp();
   pedirPermisoNotif();
   await loadMenu();await renderPedidos();
