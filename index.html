@@ -829,7 +829,6 @@ async function launchApp(){
     document.getElementById('app-logo').appendChild(logoImg);
   }
   document.getElementById('gnav-admin').style.display=perfil.rol==='dueno'?'flex':'none';
-  document.getElementById('gnav-actividad').style.display=perfil.rol==='empleado'?'flex':'none';
   applyDark();setMoneda(moneda);
   document.getElementById('tasa-input').value=tasaBCV;
   showApp();
