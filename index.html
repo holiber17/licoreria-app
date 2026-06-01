@@ -239,6 +239,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="nav-tab active" id="gnav-pedidos" onclick="switchGNav('pedidos')"><i class="ti ti-users"></i> Pedidos</button>
       <button class="nav-tab" id="gnav-menu" onclick="switchGNav('menu')"><i class="ti ti-book"></i> Menú</button>
       <button class="nav-tab" id="gnav-caja" onclick="switchGNav('caja')"><i class="ti ti-chart-bar"></i> Caja</button>
+      <button class="nav-tab" id="gnav-actividad" onclick="switchGNav('actividad')" style="display:none"><i class="ti ti-chart-line"></i> Mi actividad</button>
       <button class="nav-tab" id="gnav-admin" onclick="switchGNav('admin')" style="display:none"><i class="ti ti-settings"></i> Admin</button>
     </div>
   </div>
@@ -413,12 +414,38 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div id="cmt-productos" style="display:none"><div class="card"><div id="caja-productos"></div></div></div>
     </div>
 
+    <!-- MI ACTIVIDAD -->
+    <div id="sec-actividad" class="sec">
+      <div class="top-bar" style="padding-top:0">
+        <h2><i class="ti ti-chart-line"></i> Mi actividad</h2>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="btn sm active" id="act-hoy" onclick="switchActPeriodo('hoy')" style="flex:1;justify-content:center">Hoy</button>
+        <button class="btn sm" id="act-sem" onclick="switchActPeriodo('semana')" style="flex:1;justify-content:center">Semana</button>
+        <button class="btn sm" id="act-mes" onclick="switchActPeriodo('mes')" style="flex:1;justify-content:center">Mes</button>
+      </div>
+      <div class="g2" id="act-metrics"></div>
+      <div class="card" style="margin-bottom:10px">
+        <div class="ch">⏰ Horario de actividad</div>
+        <div id="act-horario"></div>
+      </div>
+      <div class="card" style="margin-bottom:10px">
+        <div class="ch">📋 Mis pedidos</div>
+        <div id="act-pedidos"></div>
+      </div>
+      <div class="card">
+        <div class="ch">🏆 Mis productos más vendidos</div>
+        <div id="act-productos"></div>
+      </div>
+    </div>
+
     <!-- ADMIN -->
     <div id="sec-admin" class="sec">
       <div class="itabs">
         <button class="itab active" id="atab-sucursales" onclick="switchAdminTab('sucursales')">Sucursales</button>
         <button class="itab" id="atab-usuarios" onclick="switchAdminTab('usuarios')">Usuarios</button>
         <button class="itab" id="atab-reportes" onclick="switchAdminTab('reportes')">Reportes</button>
+        <button class="itab" id="atab-empleados" onclick="switchAdminTab('empleados')">Empleados</button>
       </div>
       <div id="amt-sucursales">
         <div class="top-bar"><h2>Sucursales</h2><button class="btn sm primary" onclick="toggleSucForm()"><i class="ti ti-plus"></i> Nueva</button></div>
@@ -477,6 +504,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <span id="pending-count"></span>
         </div>
         <div id="usuarios-list"></div>
+      </div>
+
+      <!-- EMPLEADOS (solo dueño) -->
+      <div id="amt-empleados" style="display:none">
+        <div class="top-bar"><h2>Actividad por empleado</h2></div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <button class="btn sm active" id="emp-hoy" onclick="switchEmpPeriodo('hoy')" style="flex:1;justify-content:center">Hoy</button>
+          <button class="btn sm" id="emp-sem" onclick="switchEmpPeriodo('semana')" style="flex:1;justify-content:center">Semana</button>
+          <button class="btn sm" id="emp-mes" onclick="switchEmpPeriodo('mes')" style="flex:1;justify-content:center">Mes</button>
+        </div>
+        <div id="emp-list"></div>
       </div>
 
       <!-- REPORTES -->
@@ -791,6 +829,7 @@ async function launchApp(){
     document.getElementById('app-logo').appendChild(logoImg);
   }
   document.getElementById('gnav-admin').style.display=perfil.rol==='dueno'?'flex':'none';
+  document.getElementById('gnav-actividad').style.display=perfil.rol==='empleado'?'flex':'none';
   applyDark();setMoneda(moneda);
   document.getElementById('tasa-input').value=tasaBCV;
   showApp();
@@ -809,6 +848,7 @@ function switchGNav(sec){
   if(sec==='menu'){loadMenu().then(renderMenu);}
   if(sec==='caja')renderCaja();
   if(sec==='admin')loadAdmin();
+  if(sec==='actividad')renderMiActividad();
 }
 function goLista(){showScr('s-lista');renderPedidos();}
 function showScr(id){document.querySelectorAll('#sec-pedidos .scr').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
@@ -1201,7 +1241,7 @@ async function loadAdmin(){switchAdminTab('sucursales');}
 let repPeriodo='semana';
 
 function switchAdminTab(tab){
-  ['sucursales','usuarios','reportes'].forEach(t=>{
+  ['sucursales','usuarios','reportes','empleados'].forEach(t=>{
     const el=document.getElementById('amt-'+t);
     const btn=document.getElementById('atab-'+t);
     if(el)el.style.display=t===tab?'block':'none';
@@ -1210,6 +1250,7 @@ function switchAdminTab(tab){
   if(tab==='sucursales'){renderSucursales();cargarBrandingActual();}
   if(tab==='usuarios')renderUsuarios();
   if(tab==='reportes')renderReportes();
+  if(tab==='empleados')renderActividadEmpleados();
 }
 
 function switchRepPeriodo(p){
@@ -1448,6 +1489,166 @@ async function activarUsuario(userId){
 }
 async function cambiarRol(userId,rol){await sbPatch('perfiles',userId,{rol});showToast('Rol actualizado ✓');}
 async function cambiarSucursalUsuario(userId,sucId){await sbPatch('perfiles',userId,{sucursal_id:sucId});showToast('Sucursal actualizada ✓');}
+
+// ---- MI ACTIVIDAD ----
+let actPeriodo='hoy';
+let empPeriodo='hoy';
+
+function switchActPeriodo(p){
+  actPeriodo=p;
+  ['hoy','sem','mes'].forEach(x=>{
+    const el=document.getElementById('act-'+x);
+    if(el)el.classList.toggle('primary',x===p.substring(0,3));
+    if(el)el.classList.toggle('active',x===p.substring(0,3));
+  });
+  renderMiActividad();
+}
+
+function switchEmpPeriodo(p){
+  empPeriodo=p;
+  ['hoy','sem','mes'].forEach(x=>{
+    const el=document.getElementById('emp-'+x);
+    if(el)el.classList.toggle('primary',x===p.substring(0,3));
+    if(el)el.classList.toggle('active',x===p.substring(0,3));
+  });
+  renderActividadEmpleados();
+}
+
+function getDesde(periodo){
+  const hoy=new Date();
+  if(periodo==='hoy'){hoy.setHours(0,0,0,0);return hoy.toISOString();}
+  if(periodo==='semana'){hoy.setDate(hoy.getDate()-7);return hoy.toISOString();}
+  if(periodo==='mes'){hoy.setDate(1);hoy.setHours(0,0,0,0);return hoy.toISOString();}
+  return hoy.toISOString();
+}
+
+async function renderMiActividad(){
+  if(!user||!sucursalActual)return;
+  const token=await getToken();
+  const desde=getDesde(actPeriodo);
+
+  // Obtener pedidos del empleado
+  const res=await fetch(SUPA_URL+'/rest/v1/caja?select=*&sucursal_id=eq.'+sucursalActual.id+'&usuario_id=eq.'+user.id+'&fecha=gte.'+desde+'&order=fecha.desc',{
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+  });
+  const caja=res.ok?await res.json():[];
+
+  const totalUSD=caja.reduce((s,p)=>s+parseFloat(p.total_usd||0),0);
+  const num=caja.length;
+  const ticket=num>0?totalUSD/num:0;
+  const totalBs=caja.reduce((s,p)=>s+(parseFloat(p.total_usd||0)*parseFloat(p.tasa_bcv||tasa())),0);
+
+  // Métricas
+  document.getElementById('act-metrics').innerHTML=`
+    <div class="metric"><div class="ml">Mis ventas USD</div><div class="mv success">${fmtUSD(totalUSD)}</div></div>
+    <div class="metric"><div class="ml">Mis ventas Bs</div><div class="mv success" style="font-size:15px">Bs ${Math.round(totalBs).toLocaleString('es-VE')}</div></div>
+    <div class="metric"><div class="ml">Pedidos atendidos</div><div class="mv">${num}</div></div>
+    <div class="metric"><div class="ml">Ticket promedio</div><div class="mv" style="font-size:15px">${fmtUSD(ticket)}</div></div>
+  `;
+
+  // Horario de actividad
+  const horas={};
+  caja.forEach(p=>{
+    const h=new Date(p.fecha).getHours();
+    if(!horas[h])horas[h]=0;
+    horas[h]++;
+  });
+  const horaEl=document.getElementById('act-horario');
+  if(!Object.keys(horas).length){
+    horaEl.innerHTML='<div style="font-size:13px;color:var(--text2);padding:8px 0">Sin actividad en este período.</div>';
+  } else {
+    const maxH=Math.max(...Object.values(horas));
+    horaEl.innerHTML=Object.entries(horas).sort((a,b)=>a[0]-b[0]).map(([h,c])=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:6px 0">
+        <span style="font-size:12px;color:var(--text2);min-width:50px">${h}:00 hs</span>
+        <div style="flex:1;background:var(--bg2);border-radius:99px;height:8px;overflow:hidden">
+          <div style="width:${Math.round(c/maxH*100)}%;height:100%;background:var(--info);border-radius:99px"></div>
+        </div>
+        <span style="font-size:12px;font-weight:600;min-width:20px">${c}</span>
+      </div>`).join('');
+  }
+
+  // Pedidos recientes
+  const pedEl=document.getElementById('act-pedidos');
+  if(!caja.length){pedEl.innerHTML='<div style="font-size:13px;color:var(--text2);padding:8px 0">Sin pedidos en este período.</div>';}
+  else{pedEl.innerHTML=caja.slice(0,10).map(p=>`<div class="res-row">
+    <div><div style="font-size:13px;font-weight:600">${p.cliente_nombre}</div>
+    <div style="font-size:11px;color:var(--text2)">${new Date(p.fecha).toLocaleString('es-VE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · ${p.metodo_pago||'Efectivo'}</div></div>
+    <div style="text-align:right"><div style="font-size:13px;font-weight:600;color:var(--success)">${fmtUSD(p.total_usd)}</div>
+    <div style="font-size:11px;color:var(--text2)">Bs ${Math.round(p.total_usd*parseFloat(p.tasa_bcv||tasa())).toLocaleString('es-VE')}</div></div>
+  </div>`).join('');}
+
+  // Productos más vendidos del empleado
+  if(caja.length){
+    const pedidoIds=caja.map(c=>c.pedido_id).filter(Boolean);
+    if(pedidoIds.length){
+      const itemsRes=await fetch(SUPA_URL+'/rest/v1/pedido_items?select=*&pedido_id=in.('+pedidoIds.join(',')+')',{
+        headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+      });
+      const items=itemsRes.ok?await itemsRes.json():[];
+      const res={};
+      items.forEach(i=>{if(!res[i.nombre])res[i.nombre]={nombre:i.nombre,cant:0,total:0};res[i.nombre].cant+=i.consumido;res[i.nombre].total+=i.consumido*i.precio_usd;});
+      const sorted=Object.values(res).sort((a,b)=>b.total-a.total).slice(0,5);
+      document.getElementById('act-productos').innerHTML=sorted.length?sorted.map((r,idx)=>`<div class="res-row">
+        <div><span style="font-size:12px;color:var(--text2);margin-right:6px">${idx+1}.</span>
+        <span style="font-size:13px;font-weight:600">${r.nombre}</span>
+        <span style="font-size:12px;color:var(--text2);margin-left:6px">× ${r.cant}</span></div>
+        <span style="font-size:13px;font-weight:600;color:var(--success)">${fmtUSD(r.total)}</span>
+      </div>`).join(''):'<div style="font-size:13px;color:var(--text2);padding:8px 0">Sin datos.</div>';
+    }
+  } else {
+    document.getElementById('act-productos').innerHTML='<div style="font-size:13px;color:var(--text2);padding:8px 0">Sin datos.</div>';
+  }
+}
+
+async function renderActividadEmpleados(){
+  if(!sucursalActual)return;
+  const token=await getToken();
+  const desde=getDesde(empPeriodo);
+  const el=document.getElementById('emp-list');
+  el.innerHTML='<div style="color:var(--text2);font-size:13px">Cargando...</div>';
+
+  // Obtener todos los perfiles empleados
+  const perfilesRes=await fetch(SUPA_URL+'/rest/v1/perfiles?select=id,nombre,rol&sucursal_id=eq.'+sucursalActual.id,{
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+  });
+  const perfiles=perfilesRes.ok?await perfilesRes.json():[];
+
+  // Obtener caja del período
+  const cajaRes=await fetch(SUPA_URL+'/rest/v1/caja?select=*&sucursal_id=eq.'+sucursalActual.id+'&fecha=gte.'+desde,{
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+  });
+  const caja=cajaRes.ok?await cajaRes.json():[];
+
+  if(!perfiles.length){el.innerHTML='<div class="empty">Sin empleados registrados.</div>';return;}
+
+  el.innerHTML=perfiles.map(p=>{
+    const misCaja=caja.filter(c=>c.usuario_id===p.id);
+    const total=misCaja.reduce((s,c)=>s+parseFloat(c.total_usd||0),0);
+    const num=misCaja.length;
+    const ticket=num>0?total/num:0;
+    const totalBs=misCaja.reduce((s,c)=>s+(parseFloat(c.total_usd||0)*parseFloat(c.tasa_bcv||tasa())),0);
+    const rolIcon=p.rol==='dueno'?'👑':p.rol==='empleado'?'👤':'🛒';
+
+    return`<div class="card" style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div class="avatar">${ini(p.nombre||'?')}</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600">${rolIcon} ${p.nombre||'Sin nombre'}</div>
+          <div style="font-size:12px;color:var(--text2)">${p.rol==='dueno'?'Dueño':'Empleado'} · ${num} pedido${num!==1?'s':''}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:14px;font-weight:600;color:var(--success)">${fmtUSD(total)}</div>
+          <div style="font-size:11px;color:var(--text2)">Bs ${Math.round(totalBs).toLocaleString('es-VE')}</div>
+        </div>
+      </div>
+      <div class="g2" style="gap:8px;margin-bottom:0">
+        <div class="metric" style="padding:10px"><div class="ml" style="font-size:10px">Pedidos</div><div class="mv" style="font-size:18px">${num}</div></div>
+        <div class="metric" style="padding:10px"><div class="ml" style="font-size:10px">Ticket prom.</div><div class="mv" style="font-size:15px">${fmtUSD(ticket)}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
 
 // ---- BACKUP ----
 async function exportarBackup(){
