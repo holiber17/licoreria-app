@@ -240,6 +240,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="nav-tab" id="gnav-menu" onclick="switchGNav('menu')"><i class="ti ti-book"></i> Menú</button>
       <button class="nav-tab" id="gnav-caja" onclick="switchGNav('caja')"><i class="ti ti-chart-bar"></i> Caja</button>
       <button class="nav-tab" id="gnav-actividad" onclick="switchGNav('actividad')" style="display:none"><i class="ti ti-chart-line"></i> Mi actividad</button>
+      <button class="nav-tab" id="gnav-inventario" onclick="switchGNav('inventario')"><i class="ti ti-package"></i> Stock</button>
       <button class="nav-tab" id="gnav-admin" onclick="switchGNav('admin')" style="display:none"><i class="ti ti-settings"></i> Admin</button>
     </div>
   </div>
@@ -422,6 +423,93 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <div id="cmt-historial"><div id="caja-historial"></div></div>
       <div id="cmt-productos" style="display:none"><div class="card"><div id="caja-productos"></div></div></div>
+    </div>
+
+    <!-- INVENTARIO -->
+    <div id="sec-inventario" class="sec">
+      <div class="top-bar">
+        <h2><i class="ti ti-package"></i> Inventario</h2>
+        <div style="display:flex;gap:6px">
+          <button class="btn sm" onclick="abrirEscaner()"><i class="ti ti-barcode"></i> Escanear</button>
+          <button class="btn sm primary" onclick="toggleInvForm()"><i class="ti ti-plus"></i> Agregar</button>
+        </div>
+      </div>
+
+      <!-- Alertas stock bajo -->
+      <div id="inv-alertas" style="display:none" class="card" style="border-color:var(--warning);background:var(--warning-bg);margin-bottom:10px">
+        <div class="ch" style="color:var(--warning)">⚠️ Stock bajo</div>
+        <div id="inv-alertas-list"></div>
+      </div>
+
+      <!-- Form agregar producto -->
+      <div id="inv-form" style="display:none" class="af">
+        <div class="fg"><label>Nombre del producto</label><input id="if-nombre" placeholder="Ej: Ron Cacique 750ml"></div>
+        <div class="fg"><label>Código de barra (opcional)</label>
+          <div style="display:flex;gap:8px">
+            <input id="if-codigo" placeholder="Ej: 7750175000015" style="flex:1">
+            <button class="btn sm" onclick="escanearParaForm()"><i class="ti ti-barcode"></i></button>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="fg"><label>Stock inicial</label><input id="if-stock" type="number" placeholder="0" min="0" step="0.5"></div>
+          <div class="fg"><label>Stock mínimo</label><input id="if-min" type="number" placeholder="5" min="0" step="0.5"></div>
+        </div>
+        <div class="fg"><label>Unidad</label>
+          <select id="if-unidad">
+            <option value="botella">Botella</option>
+            <option value="lata">Lata</option>
+            <option value="caja">Caja</option>
+            <option value="litro">Litro</option>
+            <option value="trago">Trago</option>
+          </select>
+        </div>
+        <div class="fg" style="display:flex;align-items:center;gap:10px">
+          <input type="checkbox" id="if-porcaja" onchange="togglePorCaja()" style="width:auto">
+          <label style="text-transform:none;font-size:13px;letter-spacing:0">Manejar por caja</label>
+        </div>
+        <div id="if-caja-fields" style="display:none">
+          <div class="fg"><label>Unidades por caja</label><input id="if-upc" type="number" placeholder="12" min="1"></div>
+        </div>
+        <div class="fa">
+          <button class="btn sm" onclick="toggleInvForm()">Cancelar</button>
+          <button class="btn sm primary" onclick="guardarInventario()"><i class="ti ti-check"></i> Guardar</button>
+        </div>
+      </div>
+
+      <!-- Buscador -->
+      <input class="sbar" id="inv-search" placeholder="Buscar producto..." oninput="renderInventario()">
+
+      <!-- Lista inventario -->
+      <div id="inv-list"></div>
+
+      <!-- Modal escaner -->
+      <div id="scanner-modal" style="display:none;position:fixed;inset:0;background:#000;z-index:300;flex-direction:column">
+        <div style="padding:16px;display:flex;align-items:center;justify-content:space-between">
+          <span style="color:#fff;font-size:16px;font-weight:600">Escanear código de barra</span>
+          <button onclick="cerrarEscaner()" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:8px 14px;border-radius:var(--radius);font-family:inherit;cursor:pointer">Cerrar</button>
+        </div>
+        <video id="scanner-video" style="width:100%;flex:1;object-fit:cover"></video>
+        <canvas id="scanner-canvas" style="display:none"></canvas>
+        <div style="padding:16px;text-align:center;color:#fff;font-size:13px" id="scanner-status">Apunta la cámara al código de barra</div>
+      </div>
+
+      <!-- Modal movimiento -->
+      <div id="mov-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:flex-end;justify-content:center">
+        <div style="background:var(--bg);border-radius:var(--radius-lg) var(--radius-lg) 0 0;padding:20px 16px;width:100%;max-width:480px">
+          <div style="font-size:16px;font-weight:600;margin-bottom:14px" id="mov-titulo">Registrar movimiento</div>
+          <div class="itabs" style="margin-bottom:14px">
+            <button class="itab active" id="mov-entrada" onclick="selMovTipo('entrada')">📦 Entrada</button>
+            <button class="itab" id="mov-salida" onclick="selMovTipo('salida')">📤 Salida</button>
+            <button class="itab" id="mov-ajuste" onclick="selMovTipo('ajuste')">✏️ Ajuste</button>
+          </div>
+          <div class="fg"><label>Cantidad</label><input id="mov-cantidad" type="number" placeholder="0" min="0" step="0.5"></div>
+          <div class="fg"><label>Motivo (opcional)</label><input id="mov-motivo" placeholder="Ej: Compra a proveedor, venta manual..."></div>
+          <div class="fa">
+            <button class="btn sm" onclick="cerrarMovModal()">Cancelar</button>
+            <button class="btn sm primary" onclick="guardarMovimiento()"><i class="ti ti-check"></i> Registrar</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- MI ACTIVIDAD -->
@@ -884,6 +972,7 @@ function switchGNav(sec){
   if(sec==='caja')renderCaja();
   if(sec==='admin')loadAdmin();
   if(sec==='actividad')renderMiActividad();
+  if(sec==='inventario'){loadInventario();}
 }
 function goLista(){showScr('s-lista');renderPedidos();}
 function showScr(id){document.querySelectorAll('#sec-pedidos .scr').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
@@ -955,6 +1044,8 @@ async function cobrarPedido(){
     body:JSON.stringify({sucursal_id:sucursalActual.id,pedido_id:pedidoActual.id,usuario_id:user.id,cliente_nombre:pedidoActual.cliente_nombre,total_usd:total,tasa_bcv:tasa(),nota,metodo_pago:metodoPago,fecha:new Date().toISOString()})
   });
   feedback();showToast(`Cobrado ${fmtUSD(total)} ✓`);
+  // Descontar inventario automáticamente
+  descontarInventario(items);
   pedidoActual=null;goLista();switchGNav('caja');
 }
 
@@ -1524,6 +1615,279 @@ async function activarUsuario(userId){
 }
 async function cambiarRol(userId,rol){await sbPatch('perfiles',userId,{rol});showToast('Rol actualizado ✓');}
 async function cambiarSucursalUsuario(userId,sucId){await sbPatch('perfiles',userId,{sucursal_id:sucId});showToast('Sucursal actualizada ✓');}
+
+// ---- AUTO DESCUENTO INVENTARIO ----
+async function descontarInventario(itemsVendidos){
+  if(!invItems.length)return;
+  const token=await getToken();
+  for(const item of itemsVendidos){
+    const inv=invItems.find(i=>i.nombre.toLowerCase()===item.nombre.toLowerCase());
+    if(!inv||inv.stock_actual<=0)continue;
+    const cantidad=item.consumido;
+    const nuevoStock=Math.max(0,inv.stock_actual-cantidad);
+    await fetch(SUPA_URL+'/rest/v1/inventario?id=eq.'+inv.id,{
+      method:'PATCH',
+      headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({stock_actual:nuevoStock,updated_at:new Date().toISOString()})
+    });
+    await fetch(SUPA_URL+'/rest/v1/inventario_movimientos',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({inventario_id:inv.id,sucursal_id:sucursalActual.id,usuario_id:user.id,tipo:'salida',cantidad,motivo:'Venta automática'})
+    });
+    inv.stock_actual=nuevoStock;
+  }
+}
+
+// ---- INVENTARIO ----
+let invItems=[];
+let movItemId=null;
+let movTipo='entrada';
+let scannerStream=null;
+let scannerInterval=null;
+let scannerCallback=null;
+
+async function loadInventario(){
+  if(!sucursalActual)return;
+  const token=await getToken();
+  const res=await fetch(SUPA_URL+'/rest/v1/inventario?select=*&sucursal_id=eq.'+sucursalActual.id+'&order=nombre',{
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+  });
+  invItems=res.ok?await res.json():[];
+  renderInventario();
+  renderInvAlertas();
+}
+
+function renderInvAlertas(){
+  const alertas=invItems.filter(i=>{
+    const pct=i.stock_minimo>0?i.stock_actual/i.stock_minimo:1;
+    return i.stock_actual<=1||pct<=0.2||i.stock_actual<=0;
+  });
+  const el=document.getElementById('inv-alertas');
+  const list=document.getElementById('inv-alertas-list');
+  if(!alertas.length){el.style.display='none';return;}
+  el.style.display='block';
+  list.innerHTML=alertas.map(i=>{
+    const icon=i.stock_actual<=0?'🚫':i.stock_actual<=1?'⚠️':'📉';
+    const msg=i.stock_actual<=0?'Sin stock':i.stock_actual<=1?'Última unidad':'Stock bajo';
+    return`<div class="res-row"><span>${icon} ${i.nombre}</span>
+      <span style="font-weight:600;color:var(--warning)">${i.stock_actual} ${i.unidad}${i.stock_actual!==1?'s':''} — ${msg}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderInventario(){
+  const el=document.getElementById('inv-list');
+  const q=(document.getElementById('inv-search')?.value||'').toLowerCase();
+  const lista=invItems.filter(i=>i.nombre.toLowerCase().includes(q)||(i.codigo_barra||'').includes(q));
+  if(!lista.length){
+    el.innerHTML='<div class="empty"><i class="ti ti-package"></i>Sin productos en inventario.<br>Agrega uno o escanea un código.</div>';
+    return;
+  }
+  el.innerHTML=lista.map(i=>{
+    const pct=i.stock_minimo>0?Math.min(i.stock_actual/i.stock_minimo*100,100):100;
+    const fc=i.stock_actual<=0?'full':i.stock_actual<=1||pct<=20?'warn':'';
+    const stockColor=i.stock_actual<=0?'var(--danger)':i.stock_actual<=1||pct<=20?'var(--warning)':'var(--success)';
+    return`<div class="card" style="margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600">${i.nombre}</div>
+          <div style="font-size:12px;color:var(--text2)">${i.codigo_barra?'📊 '+i.codigo_barra+' · ':''}${i.por_caja?'Caja de '+i.unidades_por_caja+' · ':''}Mín: ${i.stock_minimo} ${i.unidad}s</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:20px;font-weight:700;color:${stockColor}">${i.stock_actual}</div>
+          <div style="font-size:11px;color:var(--text2)">${i.unidad}${i.stock_actual!==1?'s':''}</div>
+        </div>
+      </div>
+      <div class="prog-bar" style="margin-bottom:10px"><div class="prog-fill ${fc}" style="width:${pct}%"></div></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn sm success" style="flex:1;justify-content:center" onclick="abrirMovModal('${i.id}','${i.nombre}','entrada')"><i class="ti ti-plus"></i> Entrada</button>
+        <button class="btn sm danger" style="flex:1;justify-content:center" onclick="abrirMovModal('${i.id}','${i.nombre}','salida')"><i class="ti ti-minus"></i> Salida</button>
+        <button class="btn sm" style="justify-content:center" onclick="abrirMovModal('${i.id}','${i.nombre}','ajuste')"><i class="ti ti-edit"></i></button>
+        <button class="btn sm danger" style="justify-content:center" onclick="eliminarInv('${i.id}')"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleInvForm(){
+  const f=document.getElementById('inv-form');
+  f.style.display=f.style.display==='none'?'block':'none';
+  if(f.style.display==='block')document.getElementById('if-nombre').focus();
+}
+
+function togglePorCaja(){
+  const checked=document.getElementById('if-porcaja').checked;
+  document.getElementById('if-caja-fields').style.display=checked?'block':'none';
+}
+
+async function guardarInventario(){
+  const nombre=document.getElementById('if-nombre').value.trim();
+  const codigo=document.getElementById('if-codigo').value.trim()||null;
+  const stock=parseFloat(document.getElementById('if-stock').value)||0;
+  const min=parseFloat(document.getElementById('if-min').value)||5;
+  const unidad=document.getElementById('if-unidad').value;
+  const porCaja=document.getElementById('if-porcaja').checked;
+  const upc=parseInt(document.getElementById('if-upc').value)||1;
+  if(!nombre){alert('Escribe el nombre');return;}
+  const token=await getToken();
+  await fetch(SUPA_URL+'/rest/v1/inventario',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({sucursal_id:sucursalActual.id,nombre,codigo_barra:codigo,stock_actual:stock,stock_minimo:min,unidad,por_caja:porCaja,unidades_por_caja:upc})
+  });
+  // Registrar movimiento inicial si hay stock
+  if(stock>0){
+    const res=await fetch(SUPA_URL+'/rest/v1/inventario?select=id&sucursal_id=eq.'+sucursalActual.id+'&nombre=eq.'+encodeURIComponent(nombre)+'&order=created_at.desc&limit=1',{
+      headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+    });
+    const data=res.ok?await res.json():[];
+    if(data[0]){
+      await fetch(SUPA_URL+'/rest/v1/inventario_movimientos',{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({inventario_id:data[0].id,sucursal_id:sucursalActual.id,usuario_id:user.id,tipo:'entrada',cantidad:stock,motivo:'Stock inicial'})
+      });
+    }
+  }
+  ['if-nombre','if-codigo','if-stock','if-min','if-upc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('if-porcaja').checked=false;
+  document.getElementById('if-caja-fields').style.display='none';
+  document.getElementById('inv-form').style.display='none';
+  showToast('Producto agregado al inventario ✓');
+  await loadInventario();
+}
+
+async function eliminarInv(id){
+  if(!confirm('¿Eliminar este producto del inventario?'))return;
+  const token=await getToken();
+  await fetch(SUPA_URL+'/rest/v1/inventario?id=eq.'+id,{
+    method:'DELETE',
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY}
+  });
+  await loadInventario();
+}
+
+// ---- MOVIMIENTOS ----
+function abrirMovModal(id,nombre,tipo){
+  movItemId=id;
+  movTipo=tipo;
+  document.getElementById('mov-titulo').textContent=(tipo==='entrada'?'📦 Entrada':'tipo'==='salida'?'📤 Salida':'✏️ Ajuste')+' — '+nombre;
+  selMovTipo(tipo);
+  document.getElementById('mov-cantidad').value='';
+  document.getElementById('mov-motivo').value='';
+  document.getElementById('mov-modal').style.display='flex';
+}
+function cerrarMovModal(){document.getElementById('mov-modal').style.display='none';movItemId=null;}
+function selMovTipo(t){
+  movTipo=t;
+  ['entrada','salida','ajuste'].forEach(x=>{document.getElementById('mov-'+x).classList.toggle('active',x===t);});
+}
+
+async function guardarMovimiento(){
+  if(!movItemId)return;
+  const cantidad=parseFloat(document.getElementById('mov-cantidad').value)||0;
+  const motivo=document.getElementById('mov-motivo').value.trim();
+  if(cantidad<=0){alert('Ingresa una cantidad válida');return;}
+  const token=await getToken();
+  // Obtener stock actual
+  const invRes=await fetch(SUPA_URL+'/rest/v1/inventario?select=stock_actual&id=eq.'+movItemId,{
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+  });
+  const invData=invRes.ok?await invRes.json():[];
+  const stockActual=parseFloat(invData[0]?.stock_actual||0);
+  let nuevoStock=stockActual;
+  if(movTipo==='entrada')nuevoStock=stockActual+cantidad;
+  else if(movTipo==='salida')nuevoStock=Math.max(0,stockActual-cantidad);
+  else nuevoStock=cantidad; // ajuste directo
+  // Actualizar stock
+  await fetch(SUPA_URL+'/rest/v1/inventario?id=eq.'+movItemId,{
+    method:'PATCH',
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({stock_actual:nuevoStock,updated_at:new Date().toISOString()})
+  });
+  // Registrar movimiento
+  await fetch(SUPA_URL+'/rest/v1/inventario_movimientos',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({inventario_id:movItemId,sucursal_id:sucursalActual.id,usuario_id:user.id,tipo:movTipo,cantidad,motivo:motivo||null})
+  });
+  cerrarMovModal();
+  showToast('Movimiento registrado ✓');
+  await loadInventario();
+  feedback();
+}
+
+// ---- ESCÁNER DE CÓDIGO DE BARRAS ----
+async function abrirEscaner(callback){
+  scannerCallback=callback||null;
+  document.getElementById('scanner-modal').style.display='flex';
+  document.getElementById('scanner-status').textContent='Iniciando cámara...';
+  try{
+    scannerStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const video=document.getElementById('scanner-video');
+    video.srcObject=scannerStream;
+    await video.play();
+    document.getElementById('scanner-status').textContent='Apunta la cámara al código de barra';
+    // Usar BarcodeDetector si está disponible
+    if('BarcodeDetector' in window){
+      const detector=new BarcodeDetector({formats:['ean_13','ean_8','code_128','code_39','upc_a','upc_e']});
+      scannerInterval=setInterval(async()=>{
+        try{
+          const barcodes=await detector.detect(video);
+          if(barcodes.length>0){
+            const codigo=barcodes[0].rawValue;
+            await procesarCodigo(codigo);
+          }
+        }catch(e){}
+      },500);
+    } else {
+      document.getElementById('scanner-status').innerHTML='Tu navegador no soporta escáner automático.<br>Ingresa el código manualmente:';
+      const inp=document.createElement('input');
+      inp.placeholder='Código de barra...';
+      inp.style.cssText='margin-top:10px;padding:10px;border-radius:var(--radius);border:none;font-size:16px;width:200px;text-align:center';
+      inp.onkeydown=async(e)=>{if(e.key==='Enter'&&inp.value.trim())await procesarCodigo(inp.value.trim());};
+      document.getElementById('scanner-status').appendChild(inp);
+      inp.focus();
+    }
+  }catch(e){
+    document.getElementById('scanner-status').textContent='No se pudo acceder a la cámara. Permite el acceso e intenta de nuevo.';
+  }
+}
+
+async function escanearParaForm(){
+  await abrirEscaner((codigo)=>{
+    document.getElementById('if-codigo').value=codigo;
+  });
+}
+
+async function procesarCodigo(codigo){
+  cerrarEscaner();
+  if(scannerCallback){
+    scannerCallback(codigo);
+    return;
+  }
+  // Buscar en inventario
+  const existe=invItems.find(i=>i.codigo_barra===codigo);
+  if(existe){
+    showToast('Producto encontrado: '+existe.nombre);
+    abrirMovModal(existe.id,existe.nombre,'entrada');
+  } else {
+    if(confirm(`Código: ${codigo}
+
+No encontrado en inventario. ¿Agregar como nuevo producto?`)){
+      document.getElementById('if-codigo').value=codigo;
+      toggleInvForm();
+    }
+  }
+}
+
+function cerrarEscaner(){
+  if(scannerInterval){clearInterval(scannerInterval);scannerInterval=null;}
+  if(scannerStream){scannerStream.getTracks().forEach(t=>t.stop());scannerStream=null;}
+  document.getElementById('scanner-modal').style.display='none';
+  scannerCallback=null;
+}
 
 // ---- MI ACTIVIDAD ----
 let actPeriodo='hoy';
