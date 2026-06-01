@@ -963,7 +963,7 @@ async function launchApp(){
 
 // ---- NAV ----
 function switchGNav(sec){
-  ['pedidos','menu','caja','admin'].forEach(s=>{
+  ['pedidos','menu','caja','admin','inventario','actividad'].forEach(s=>{
     const t=document.getElementById('gnav-'+s),c=document.getElementById('sec-'+s);
     if(t)t.classList.toggle('active',s===sec);
     if(c)c.classList.toggle('active',s===sec);
