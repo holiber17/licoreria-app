@@ -158,48 +158,70 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .pending-banner{background:var(--warning-bg);border:.5px solid var(--warning);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--warning);display:flex;align-items:center;gap:8px}
 
 /* ---- PANTALLA COMPLETA / TABLET ---- */
+:fullscreen body,
+:-webkit-full-screen body {
+  background:var(--bg3);
+}
 :fullscreen .shell,
-:-webkit-full-screen .shell,
-:-moz-full-screen .shell {
+:-webkit-full-screen .shell {
   max-width:100%;
   flex-direction:row;
+  height:100vh;
+  overflow:hidden;
 }
 :fullscreen .hdr,
 :-webkit-full-screen .hdr {
-  width:260px;
+  width:220px;
+  min-width:220px;
   height:100vh;
   border-right:.5px solid var(--border);
   border-bottom:none;
   flex-direction:column;
-  padding:20px 16px;
-  position:sticky;
-  top:0;
+  padding:20px 14px;
+  position:relative;
+  top:auto;
   flex-shrink:0;
+  overflow-y:auto;
 }
 :fullscreen .hdr-top,
 :-webkit-full-screen .hdr-top {
   flex-direction:column;
   align-items:flex-start;
-  gap:12px;
+  gap:10px;
   margin-bottom:16px;
+}
+:fullscreen .hdr-actions,
+:-webkit-full-screen .hdr-actions {
+  flex-wrap:wrap;
+  gap:6px;
 }
 :fullscreen .nav-tabs,
 :-webkit-full-screen .nav-tabs {
   flex-direction:column;
   width:100%;
+  background:transparent;
+  padding:0;
+  gap:4px;
 }
 :fullscreen .nav-tab,
 :-webkit-full-screen .nav-tab {
   justify-content:flex-start;
-  padding:12px 14px;
-  font-size:14px;
+  padding:11px 12px;
+  font-size:13px;
+  border-radius:var(--radius);
+  text-align:left;
+}
+:fullscreen .nav-tab.active,
+:-webkit-full-screen .nav-tab.active {
+  background:var(--bg2);
+  border:.5px solid var(--border);
 }
 :fullscreen .content,
 :-webkit-full-screen .content {
   flex:1;
   overflow-y:auto;
   height:100vh;
-  max-width:680px;
+  padding:20px 24px;
 }
 :fullscreen .tbar,
 :-webkit-full-screen .tbar {
@@ -207,6 +229,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   top:0;
   z-index:10;
   background:var(--bg);
+  border-radius:var(--radius);
+  margin-bottom:16px;
 }
 /* Modo kiosco fallback */
 body.kiosco .shell { max-width:100%; }
