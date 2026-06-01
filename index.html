@@ -241,6 +241,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="nav-tab" id="gnav-caja" onclick="switchGNav('caja')"><i class="ti ti-chart-bar"></i> Caja</button>
       <button class="nav-tab" id="gnav-actividad" onclick="switchGNav('actividad')" style="display:none"><i class="ti ti-chart-line"></i> Mi actividad</button>
       <button class="nav-tab" id="gnav-inventario" onclick="switchGNav('inventario')"><i class="ti ti-package"></i> Stock</button>
+      <button class="nav-tab" id="gnav-clientes" onclick="switchGNav('clientes')"><i class="ti ti-users"></i> Clientes</button>
       <button class="nav-tab" id="gnav-admin" onclick="switchGNav('admin')" style="display:none"><i class="ti ti-settings"></i> Admin</button>
     </div>
   </div>
@@ -278,8 +279,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </div>
         <div id="form-nuevo" style="display:none" class="af">
           <div class="fg"><label>Nombre del cliente, grupo o mesa</label>
-            <input id="nuevo-nombre" placeholder="Ej: Carlos, Mesa 4..." onkeydown="if(event.key==='Enter')crearPedido()">
+            <input id="nuevo-nombre" placeholder="Ej: Carlos, Mesa 4..." onkeydown="if(event.key==='Enter')crearPedido()" oninput="buscarClienteSugerido()">
           </div>
+          <div id="cliente-sugeridos" style="display:none;background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius);margin-top:-8px;margin-bottom:8px;overflow:hidden"></div>
           <div class="fa">
             <button class="btn sm" onclick="toggleNuevo()">Cancelar</button>
             <button class="btn sm primary" onclick="crearPedido()"><i class="ti ti-check"></i> Abrir</button>
@@ -507,6 +509,51 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <div class="fa">
             <button class="btn sm" onclick="cerrarMovModal()">Cancelar</button>
             <button class="btn sm primary" onclick="guardarMovimiento()"><i class="ti ti-check"></i> Registrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLIENTES -->
+    <div id="sec-clientes" class="sec">
+      <div class="top-bar">
+        <h2><i class="ti ti-users"></i> Clientes</h2>
+        <button class="btn sm primary" onclick="toggleClienteForm()"><i class="ti ti-plus"></i> Nuevo</button>
+      </div>
+
+      <!-- Form nuevo cliente -->
+      <div id="cliente-form" style="display:none" class="af">
+        <div class="fg"><label>Nombre</label><input id="cf-nombre" placeholder="Nombre del cliente"></div>
+        <div class="fg"><label>Teléfono (opcional)</label><input id="cf-tel" type="tel" placeholder="+58 412 000 0000"></div>
+        <div class="fg"><label>Notas (opcional)</label><input id="cf-notas" placeholder="Ej: Cliente frecuente, prefiere ron..."></div>
+        <div class="fa">
+          <button class="btn sm" onclick="toggleClienteForm()">Cancelar</button>
+          <button class="btn sm primary" onclick="guardarCliente()"><i class="ti ti-check"></i> Guardar</button>
+        </div>
+      </div>
+
+      <input class="sbar" id="cli-search" placeholder="Buscar cliente..." oninput="renderClientes()">
+      <div id="clientes-list"></div>
+
+      <!-- Modal historial cliente -->
+      <div id="hist-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:flex-end;justify-content:center">
+        <div style="background:var(--bg);border-radius:var(--radius-lg) var(--radius-lg) 0 0;padding:20px 16px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <span id="hist-modal-nombre" style="font-size:16px;font-weight:600"></span>
+            <button class="btn sm" onclick="cerrarHistModal()"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="g2" id="hist-modal-metrics"></div>
+          <div class="card" style="margin-top:10px">
+            <div class="ch">🏆 Productos favoritos</div>
+            <div id="hist-modal-prods"></div>
+          </div>
+          <div class="card" style="margin-top:10px">
+            <div class="ch">📅 Últimas visitas</div>
+            <div id="hist-modal-visitas"></div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px">
+            <button class="btn sm" style="flex:1;justify-content:center" onclick="editarCliente()"><i class="ti ti-pencil"></i> Editar</button>
+            <button class="btn sm danger" style="flex:1;justify-content:center" onclick="eliminarCliente()"><i class="ti ti-trash"></i> Eliminar</button>
           </div>
         </div>
       </div>
@@ -963,7 +1010,7 @@ async function launchApp(){
 
 // ---- NAV ----
 function switchGNav(sec){
-  ['pedidos','menu','caja','admin','inventario','actividad'].forEach(s=>{
+  ['pedidos','menu','caja','admin','inventario','actividad','clientes'].forEach(s=>{
     const t=document.getElementById('gnav-'+s),c=document.getElementById('sec-'+s);
     if(t)t.classList.toggle('active',s===sec);
     if(c)c.classList.toggle('active',s===sec);
@@ -973,9 +1020,30 @@ function switchGNav(sec){
   if(sec==='admin')loadAdmin();
   if(sec==='actividad')renderMiActividad();
   if(sec==='inventario'){loadInventario();}
+  if(sec==='clientes'){loadClientes();}
 }
 function goLista(){showScr('s-lista');renderPedidos();}
 function showScr(id){document.querySelectorAll('#sec-pedidos .scr').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function buscarClienteSugerido(){
+  const q=document.getElementById('nuevo-nombre').value.trim().toLowerCase();
+  const sug=document.getElementById('cliente-sugeridos');
+  if(!q||q.length<2||!clientesList.length){sug.style.display='none';return;}
+  const matches=clientesList.filter(c=>c.nombre.toLowerCase().includes(q)).slice(0,4);
+  if(!matches.length){sug.style.display='none';return;}
+  sug.style.display='block';
+  sug.innerHTML=matches.map(c=>`<div onclick="seleccionarCliente('${c.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:.5px solid var(--border);font-size:13px;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'">
+    <div class="avatar" style="width:28px;height:28px;font-size:11px">${ini(c.nombre)}</div>
+    <div><div style="font-weight:600">${c.nombre}</div><div style="font-size:11px;color:var(--text2)">${c.telefono||'Sin teléfono'}</div></div>
+  </div>`).join('');
+}
+
+function seleccionarCliente(clienteId){
+  const c=clientesList.find(x=>x.id===clienteId);
+  if(!c)return;
+  document.getElementById('nuevo-nombre').value=c.nombre;
+  document.getElementById('cliente-sugeridos').style.display='none';
+}
+
 function toggleNuevo(){const f=document.getElementById('form-nuevo');f.style.display=f.style.display==='none'?'block':'none';if(f.style.display==='block')document.getElementById('nuevo-nombre').focus();}
 function renderAll(){renderPedidos();if(pedidoActual){renderConsumo();renderCuenta();}renderMenu();renderCaja();}
 
@@ -1615,6 +1683,160 @@ async function activarUsuario(userId){
 }
 async function cambiarRol(userId,rol){await sbPatch('perfiles',userId,{rol});showToast('Rol actualizado ✓');}
 async function cambiarSucursalUsuario(userId,sucId){await sbPatch('perfiles',userId,{sucursal_id:sucId});showToast('Sucursal actualizada ✓');}
+
+// ---- CLIENTES ----
+let clientesList=[];
+let clienteActual=null;
+
+async function loadClientes(){
+  if(!sucursalActual)return;
+  const token=await getToken();
+  const res=await fetch(SUPA_URL+'/rest/v1/clientes?select=*&sucursal_id=eq.'+sucursalActual.id+'&order=nombre',{
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+  });
+  clientesList=res.ok?await res.json():[];
+  renderClientes();
+}
+
+function renderClientes(){
+  const el=document.getElementById('clientes-list');
+  const q=(document.getElementById('cli-search')?.value||'').toLowerCase();
+  const lista=clientesList.filter(c=>c.nombre.toLowerCase().includes(q)||(c.telefono||'').includes(q));
+  if(!lista.length){
+    el.innerHTML='<div class="empty"><i class="ti ti-users"></i>Sin clientes registrados.<br>Toca "+ Nuevo" para agregar.</div>';
+    return;
+  }
+  el.innerHTML=lista.map(c=>`
+    <div class="cli-card" onclick="verHistorial('${c.id}')" style="margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="avatar">${ini(c.nombre)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600">${c.nombre}</div>
+          <div style="font-size:12px;color:var(--text2)">${c.telefono?'📱 '+c.telefono:'Sin teléfono'}${c.notas?' · '+c.notas:''}</div>
+        </div>
+        <i class="ti ti-chevron-right" style="color:var(--text3)"></i>
+      </div>
+    </div>`).join('');
+}
+
+function toggleClienteForm(){
+  const f=document.getElementById('cliente-form');
+  f.style.display=f.style.display==='none'?'block':'none';
+  if(f.style.display==='block')document.getElementById('cf-nombre').focus();
+}
+
+async function guardarCliente(){
+  const nombre=document.getElementById('cf-nombre').value.trim();
+  const telefono=document.getElementById('cf-tel').value.trim()||null;
+  const notas=document.getElementById('cf-notas').value.trim()||null;
+  if(!nombre){alert('Escribe el nombre');return;}
+  const token=await getToken();
+  await fetch(SUPA_URL+'/rest/v1/clientes',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({sucursal_id:sucursalActual.id,nombre,telefono,notas})
+  });
+  ['cf-nombre','cf-tel','cf-notas'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cliente-form').style.display='none';
+  showToast('Cliente guardado ✓');
+  await loadClientes();
+}
+
+async function verHistorial(clienteId){
+  clienteActual=clientesList.find(c=>c.id===clienteId);
+  if(!clienteActual)return;
+  const token=await getToken();
+  document.getElementById('hist-modal-nombre').textContent=clienteActual.nombre;
+  document.getElementById('hist-modal-metrics').innerHTML='<div class="spinner" style="margin:20px auto"></div>';
+  document.getElementById('hist-modal').style.display='flex';
+
+  // Buscar pedidos por nombre del cliente
+  const cajaRes=await fetch(SUPA_URL+'/rest/v1/caja?select=*&sucursal_id=eq.'+sucursalActual.id+'&cliente_nombre=eq.'+encodeURIComponent(clienteActual.nombre)+'&order=fecha.desc',{
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+  });
+  const caja=cajaRes.ok?await cajaRes.json():[];
+
+  const totalUSD=caja.reduce((s,p)=>s+parseFloat(p.total_usd||0),0);
+  const visitas=caja.length;
+  const ticket=visitas>0?totalUSD/visitas:0;
+  const ultimaVisita=caja.length?new Date(caja[0].fecha).toLocaleDateString('es-VE',{day:'2-digit',month:'2-digit',year:'numeric'}):'Nunca';
+
+  document.getElementById('hist-modal-metrics').innerHTML=`
+    <div class="metric"><div class="ml">Total gastado</div><div class="mv success" style="font-size:17px">${fmtUSD(totalUSD)}</div></div>
+    <div class="metric"><div class="ml">Visitas</div><div class="mv">${visitas}</div></div>
+    <div class="metric"><div class="ml">Ticket prom.</div><div class="mv" style="font-size:15px">${fmtUSD(ticket)}</div></div>
+    <div class="metric"><div class="ml">Última visita</div><div class="mv" style="font-size:13px">${ultimaVisita}</div></div>
+  `;
+
+  // Productos favoritos
+  if(caja.length){
+    const pedidoIds=caja.map(c=>c.pedido_id).filter(Boolean);
+    if(pedidoIds.length){
+      const itemsRes=await fetch(SUPA_URL+'/rest/v1/pedido_items?select=*&pedido_id=in.('+pedidoIds.join(',')+')',{
+        headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
+      });
+      const items=itemsRes.ok?await itemsRes.json():[];
+      const res={};
+      items.forEach(i=>{if(!res[i.nombre])res[i.nombre]={nombre:i.nombre,cant:0,total:0};res[i.nombre].cant+=i.consumido;res[i.nombre].total+=i.consumido*i.precio_usd;});
+      const sorted=Object.values(res).sort((a,b)=>b.cant-a.cant).slice(0,5);
+      document.getElementById('hist-modal-prods').innerHTML=sorted.length?sorted.map((r,idx)=>`<div class="res-row">
+        <div><span style="font-size:16px;margin-right:8px">${idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':'⭐'}</span>
+        <span style="font-size:13px;font-weight:600">${r.nombre}</span>
+        <span style="font-size:12px;color:var(--text2);margin-left:6px">× ${r.cant}</span></div>
+        <span style="font-size:13px;font-weight:600;color:var(--success)">${fmtUSD(r.total)}</span>
+      </div>`).join(''):'<div style="font-size:13px;color:var(--text2);padding:8px 0">Sin datos.</div>';
+    }
+  } else {
+    document.getElementById('hist-modal-prods').innerHTML='<div style="font-size:13px;color:var(--text2);padding:8px 0">Sin visitas registradas.</div>';
+  }
+
+  // Últimas visitas
+  document.getElementById('hist-modal-visitas').innerHTML=caja.length?caja.slice(0,8).map(p=>`<div class="res-row">
+    <div>
+      <div style="font-size:13px;font-weight:600">${new Date(p.fecha).toLocaleDateString('es-VE',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'})}</div>
+      <div style="font-size:11px;color:var(--text2)">${p.metodo_pago||'Efectivo'}${p.nota?' · '+p.nota:''}</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:13px;font-weight:600;color:var(--success)">${fmtUSD(p.total_usd)}</div>
+      <div style="font-size:11px;color:var(--text2)">Bs ${Math.round(p.total_usd*parseFloat(p.tasa_bcv||tasa())).toLocaleString('es-VE')}</div>
+    </div>
+  </div>`).join(''):'<div style="font-size:13px;color:var(--text2);padding:8px 0">Sin visitas registradas.</div>';
+}
+
+function cerrarHistModal(){
+  document.getElementById('hist-modal').style.display='none';
+  clienteActual=null;
+}
+
+async function editarCliente(){
+  if(!clienteActual)return;
+  const nombre=prompt('Nombre:',clienteActual.nombre);
+  if(!nombre)return;
+  const telefono=prompt('Teléfono:',clienteActual.telefono||'');
+  const notas=prompt('Notas:',clienteActual.notas||'');
+  const token=await getToken();
+  await fetch(SUPA_URL+'/rest/v1/clientes?id=eq.'+clienteActual.id,{
+    method:'PATCH',
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({nombre,telefono:telefono||null,notas:notas||null})
+  });
+  showToast('Cliente actualizado ✓');
+  cerrarHistModal();
+  await loadClientes();
+}
+
+async function eliminarCliente(){
+  if(!clienteActual)return;
+  if(!confirm('¿Eliminar a '+clienteActual.nombre+'? Se perderá su historial.'))return;
+  const token=await getToken();
+  await fetch(SUPA_URL+'/rest/v1/clientes?id=eq.'+clienteActual.id,{
+    method:'DELETE',
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY}
+  });
+  showToast('Cliente eliminado');
+  cerrarHistModal();
+  await loadClientes();
+}
 
 // ---- AUTO DESCUENTO INVENTARIO ----
 async function descontarInventario(itemsVendidos){
