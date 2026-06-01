@@ -157,6 +157,61 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .user-card.pending{border-color:var(--warning);background:var(--warning-bg)}
 .pending-banner{background:var(--warning-bg);border:.5px solid var(--warning);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--warning);display:flex;align-items:center;gap:8px}
 
+/* ---- PANTALLA COMPLETA / TABLET ---- */
+:fullscreen .shell,
+:-webkit-full-screen .shell,
+:-moz-full-screen .shell {
+  max-width:100%;
+  flex-direction:row;
+}
+:fullscreen .hdr,
+:-webkit-full-screen .hdr {
+  width:260px;
+  height:100vh;
+  border-right:.5px solid var(--border);
+  border-bottom:none;
+  flex-direction:column;
+  padding:20px 16px;
+  position:sticky;
+  top:0;
+  flex-shrink:0;
+}
+:fullscreen .hdr-top,
+:-webkit-full-screen .hdr-top {
+  flex-direction:column;
+  align-items:flex-start;
+  gap:12px;
+  margin-bottom:16px;
+}
+:fullscreen .nav-tabs,
+:-webkit-full-screen .nav-tabs {
+  flex-direction:column;
+  width:100%;
+}
+:fullscreen .nav-tab,
+:-webkit-full-screen .nav-tab {
+  justify-content:flex-start;
+  padding:12px 14px;
+  font-size:14px;
+}
+:fullscreen .content,
+:-webkit-full-screen .content {
+  flex:1;
+  overflow-y:auto;
+  height:100vh;
+  max-width:680px;
+}
+:fullscreen .tbar,
+:-webkit-full-screen .tbar {
+  position:sticky;
+  top:0;
+  z-index:10;
+  background:var(--bg);
+}
+/* Modo kiosco fallback */
+body.kiosco .shell { max-width:100%; }
+body.kiosco .hdr { padding:12px 20px; }
+
 /* ---- PRINT / PDF ---- */
 @media print {
   .hdr,.tbar,.itabs,.nav-tabs,.btn,.icon-btn,.hdr-actions{display:none!important}
@@ -231,6 +286,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <h1><span id="app-logo"><i class="ti ti-bottle"></i></span> <span id="app-titulo">Licorería</span></h1>
       <div class="hdr-actions">
         <span id="sucursal-badge" style="font-size:11px;color:var(--text2);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:none"></span>
+        <button class="icon-btn" onclick="toggleFullscreen()" id="fs-btn" title="Pantalla completa"><i class="ti ti-maximize"></i></button>
         <button class="icon-btn" onclick="toggleDark()" id="dark-btn"><i class="ti ti-moon"></i></button>
         <button class="icon-btn" onclick="doLogout()"><i class="ti ti-logout"></i></button>
       </div>
@@ -771,6 +827,35 @@ function fmtDual(n){
 function beep(){try{const c=new(window.AudioContext||window.webkitAudioContext)();const o=c.createOscillator();const g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=520;g.gain.setValueAtTime(.12,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.1);o.start();o.stop(c.currentTime+.1);}catch(e){}}
 function vibrate(){if(navigator.vibrate)navigator.vibrate(30);}
 function feedback(){beep();vibrate();}
+
+// ---- PANTALLA COMPLETA ----
+function toggleFullscreen(){
+  const btn=document.getElementById('fs-btn');
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen().then(()=>{
+      btn.innerHTML='<i class="ti ti-minimize"></i>';
+      // Bloquear orientación horizontal en tablet si es posible
+      if(screen.orientation&&screen.orientation.lock){
+        screen.orientation.lock('landscape').catch(()=>{});
+      }
+    }).catch(()=>{
+      // Si no soporta fullscreen, usar modo kiosco visual
+      document.body.classList.add('kiosco');
+      btn.innerHTML='<i class="ti ti-minimize"></i>';
+    });
+  } else {
+    document.exitFullscreen().then(()=>{
+      btn.innerHTML='<i class="ti ti-maximize"></i>';
+      if(screen.orientation&&screen.orientation.unlock)screen.orientation.unlock();
+    });
+  }
+}
+
+// Actualizar botón si el usuario sale con Escape
+document.addEventListener('fullscreenchange',()=>{
+  const btn=document.getElementById('fs-btn');
+  if(btn)btn.innerHTML=document.fullscreenElement?'<i class="ti ti-minimize"></i>':'<i class="ti ti-maximize"></i>';
+});
 
 function sonidoCaja(){
   try{
