@@ -772,6 +772,33 @@ function beep(){try{const c=new(window.AudioContext||window.webkitAudioContext)(
 function vibrate(){if(navigator.vibrate)navigator.vibrate(30);}
 function feedback(){beep();vibrate();}
 
+function sonidoCaja(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    // Sonido de caja registradora: serie de tonos descendentes + campana
+    const notas=[
+      {freq:1200,t:0,dur:.06,vol:.3},
+      {freq:900,t:.06,dur:.06,vol:.25},
+      {freq:600,t:.12,dur:.06,vol:.2},
+      {freq:1800,t:.2,dur:.15,vol:.4},  // campana
+      {freq:1800,t:.35,dur:.3,vol:.2},  // eco campana
+    ];
+    notas.forEach(n=>{
+      const o=ctx.createOscillator();
+      const g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.type=n.freq>1000?'sine':'square';
+      o.frequency.value=n.freq;
+      g.gain.setValueAtTime(n.vol,ctx.currentTime+n.t);
+      g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+n.t+n.dur);
+      o.start(ctx.currentTime+n.t);
+      o.stop(ctx.currentTime+n.t+n.dur+.05);
+    });
+  }catch(e){beep();}
+  // Vibración de cobro
+  if(navigator.vibrate)navigator.vibrate([100,50,100,50,200]);
+}
+
 // ---- NOTIFICACIONES ----
 let notifPermiso = false;
 let notificadosHoy = new Set(JSON.parse(localStorage.getItem('notif_hoy')||'[]'));
@@ -1111,7 +1138,7 @@ async function cobrarPedido(){
     headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
     body:JSON.stringify({sucursal_id:sucursalActual.id,pedido_id:pedidoActual.id,usuario_id:user.id,cliente_nombre:pedidoActual.cliente_nombre,total_usd:total,tasa_bcv:tasa(),nota,metodo_pago:metodoPago,fecha:new Date().toISOString()})
   });
-  feedback();showToast(`Cobrado ${fmtUSD(total)} ✓`);
+  sonidoCaja();showToast(`Cobrado ${fmtUSD(total)} ✓`);
   // Descontar inventario automáticamente
   descontarInventario(items);
   pedidoActual=null;goLista();switchGNav('caja');
