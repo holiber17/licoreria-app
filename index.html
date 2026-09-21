@@ -834,8 +834,9 @@ function saveTasaEur(){tasaEUR=tasaEur();localStorage.setItem('tasaEur',tasaEUR)
 function saveTasa(){tasaBCV=tasa();localStorage.setItem('tasa',tasaBCV);renderAll();}
 function fmtUSD(n){return'$'+(+n||0).toFixed(2);}
 function fmtBs(n){return'Bs '+Math.round((+n||0)*tasa()).toLocaleString('es-VE');}
-function fmtEUR(n){return'€'+(+n||0).toFixed(2);}
-function fmtBsEur(n){return'Bs '+Math.round((+n||0)*tasaEur()).toLocaleString('es-VE');}
+function usdAEur(n){const tE=tasaEur();if(!tE)return 0;return(+n||0)*tasa()/tE;}
+function fmtEUR(n){return'€'+usdAEur(n).toFixed(2);}
+function fmtBsEur(n){return'Bs '+Math.round(usdAEur(n)*tasaEur()).toLocaleString('es-VE');}
 function fmtPrice(n){
   if(moneda==='usd')return fmtUSD(n);
   if(moneda==='eur')return fmtEUR(n);
