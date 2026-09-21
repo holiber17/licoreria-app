@@ -131,14 +131,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .mv{font-size:20px;font-weight:700}.mv.success{color:var(--success)}
 .tbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;background:var(--bg2);border-radius:var(--radius);padding:9px 12px;margin-bottom:14px;font-size:13px;color:var(--text2)}
 .tbar input{width:90px;padding:4px 8px;border-radius:var(--radius);border:.5px solid var(--border2);background:var(--bg);color:var(--text);font-size:13px;font-family:inherit;text-align:right;outline:none}
+.rblk{display:flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0}
+.tbar input[readonly]{border-color:transparent;background:transparent;color:var(--text);font-weight:600;width:62px;padding:4px 2px;text-align:left;cursor:default;pointer-events:none;-webkit-user-select:none;user-select:none}
 .tbadge{font-size:11px;padding:3px 8px;border-radius:99px;font-weight:600;background:var(--success-bg);color:var(--success);display:inline-flex;align-items:center;gap:4px}
 .tbadge.loading{background:var(--warning-bg);color:var(--warning)}
 .tbadge.error{background:var(--danger-bg);color:var(--danger)}
 .mtoggle{display:flex;gap:4px;margin-left:auto}
 .mtbtn{padding:4px 10px;border-radius:99px;font-size:12px;cursor:pointer;border:.5px solid var(--border2);background:transparent;color:var(--text2);font-family:inherit;transition:all .12s;font-weight:500}
 .mtbtn.active{background:var(--text);color:var(--bg);border-color:var(--text)}
-.dp{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
-.pusd{font-size:13px;font-weight:600}.pbs{font-size:11px;color:var(--text2)}
+.dp{display:flex;flex-direction:column;align-items:flex-end;gap:1px;flex-shrink:0}
+.pusd{font-size:13px;font-weight:600;white-space:nowrap}.pbs{font-size:11px;color:var(--text2);white-space:nowrap}
 .loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:12px;color:var(--text2);font-size:14px}
 .spinner{width:32px;height:32px;border:3px solid var(--border2);border-top-color:var(--text);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -329,14 +331,8 @@ body.kiosco .hdr { padding:12px 20px; }
   <div class="content">
     <div class="tbar" style="flex-direction:column;align-items:stretch;gap:6px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <i class="ti ti-currency-dollar"></i>
-        <span>1 USD =</span>
-        <input id="tasa-input" type="number" min="1" step="0.01" value="530.50" onchange="saveTasa()" style="width:90px">
-        <span>Bs</span>
-        <i class="ti ti-currency-euro" style="margin-left:8px"></i>
-        <span>1 EUR =</span>
-        <input id="tasa-eur-input" type="number" min="1" step="0.01" value="580.00" onchange="saveTasaEur()" style="width:90px">
-        <span>Bs</span>
+        <span class="rblk"><i class="ti ti-currency-dollar"></i><span>1 USD =</span><input id="tasa-input" type="text" value="530.50" readonly tabindex="-1" aria-readonly="true"><span>Bs</span></span>
+        <span class="rblk"><i class="ti ti-currency-euro"></i><span>1 EUR =</span><input id="tasa-eur-input" type="text" value="580.00" readonly tabindex="-1" aria-readonly="true"><span>Bs</span></span>
         <span id="tbadge" class="tbadge loading"><i class="ti ti-refresh"></i> Cargando...</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
