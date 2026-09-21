@@ -1,8 +1,8 @@
 {
-  "name": "Licorería",
-  "short_name": "Licorería",
-  "description": "Control de consumo para licorería",
-  "start_url": "/licoreria-app/",
+  "name": "LicorApp",
+  "short_name": "LicorApp",
+  "description": "Punto de venta, inventario y reportes para licorerías y bodegones",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1a1a1a",
@@ -14,5 +14,6 @@
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "scope": "./"
 }

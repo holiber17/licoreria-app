@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mi pedido — Licorería</title>
+<title>Mi pedido — LicorApp</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 :root{
@@ -73,7 +73,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <body>
 <div class="shell">
   <div class="hdr">
-    <h1><i class="ti ti-bottle"></i> Licorería</h1>
+    <h1><i class="ti ti-bottle"></i> LicorApp</h1>
     <div class="live-badge" id="live-badge">
       <div class="live-dot"></div>
       En vivo
@@ -88,7 +88,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 
   <div class="footer">
-    Actualiza automáticamente cada 15 segundos · Licorería App
+    Actualiza automáticamente cada 15 segundos · LicorApp
   </div>
 </div>
 
@@ -276,7 +276,7 @@ function checkNotifCliente(items){
       if(notifPermiso){
         new Notification('⚠️ ¡Última unidad!',{
           body:'Solo queda 1 '+item.unidad+' de '+item.nombre,
-          icon:'/licoreria-app/icon.svg',
+          icon:new URL('icon.svg', location.href).href,
           tag:key,
           requireInteraction:true
         });
@@ -295,7 +295,7 @@ function checkNotifCliente(items){
       if(notifPermiso){
         new Notification('🚫 Se agotó el combo',{
           body:item.nombre+' — no quedan unidades',
-          icon:'/licoreria-app/icon.svg',
+          icon:new URL('icon.svg', location.href).href,
           tag:keyFull,
           requireInteraction:true
         });

@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Licorería</title>
+<title>LicorApp</title>
 
 <meta name="theme-color" content="#1a1a1a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Licorería">
+<meta name="apple-mobile-web-app-title" content="LicorApp">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -273,7 +273,7 @@ body.kiosco .hdr { padding:12px 20px; }
 <div id="auth-screen" class="auth-wrap" style="display:none">
   <div class="auth-box">
     <div class="auth-logo">🍾</div>
-    <div class="auth-title">Licorería</div>
+    <div class="auth-title">LicorApp</div>
     <div class="auth-sub" id="auth-subtitle">Inicia sesión para continuar</div>
     <div id="auth-error" style="display:none;background:var(--danger-bg);color:var(--danger);padding:10px 12px;border-radius:var(--radius);font-size:13px;margin-bottom:12px"></div>
     <div id="form-login">
@@ -307,7 +307,7 @@ body.kiosco .hdr { padding:12px 20px; }
 <div id="app" class="shell" style="display:none">
   <div class="hdr">
     <div class="hdr-top">
-      <h1><span id="app-logo"><i class="ti ti-bottle"></i></span> <span id="app-titulo">Licorería</span></h1>
+      <h1><span id="app-logo"><i class="ti ti-bottle"></i></span> <span id="app-titulo">LicorApp</span></h1>
       <div class="hdr-actions">
         <span id="sucursal-badge" style="font-size:11px;color:var(--text2);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:none"></span>
         <button class="icon-btn" onclick="toggleFullscreen()" id="fs-btn" title="Pantalla completa"><i class="ti ti-maximize"></i></button>
@@ -954,8 +954,8 @@ function notifUltimaUnidad(itemNombre, pedidoNombre){
   if(notifPermiso && Notification.permission==='granted'){
     new Notification('⚠️ Última unidad', {
       body: itemNombre+' — queda 1 unidad ('+pedidoNombre+')',
-      icon: '/licoreria-app/icon.svg',
-      badge: '/licoreria-app/icon.svg',
+      icon: new URL('icon.svg', location.href).href,
+      badge: new URL('icon.svg', location.href).href,
       tag: key,
       requireInteraction: true
     });
@@ -1122,7 +1122,7 @@ async function refreshPerfilCache(u){
 async function launchApp(){
   sucursalActual=perfil.sucursales||{id:perfil.sucursal_id,nombre:'Mi sucursal'};
   // Aplicar nombre y logo personalizados
-  const appNombre=sucursalActual?.app_nombre||sucursalActual?.nombre||'Licorería';
+  const appNombre=sucursalActual?.app_nombre||sucursalActual?.nombre||'LicorApp';
   document.title=appNombre;
   document.getElementById('app-titulo').textContent=appNombre;
   document.getElementById('sucursal-badge').textContent=sucursalActual?.nombre||'';
@@ -1256,7 +1256,7 @@ async function cobrarPedido(){
 // ---- QR ----
 function mostrarQR(){
   if(!pedidoActual)return;
-  const url='https://holiber17.github.io/licoreria-app/pedido.html?id='+pedidoActual.id;
+  const url=new URL('pedido.html?id='+pedidoActual.id, location.href).href;
   document.getElementById('qr-url').textContent=url;
   const modal=document.getElementById('qr-modal');
   modal.style.display='flex';
@@ -2613,7 +2613,7 @@ async function guardarBranding(){
       document.getElementById('app-logo').innerHTML='';
       document.getElementById('app-logo').appendChild(logoImg);
     }
-    showToast('¡Guardado! La app ahora se llama '+( nombre||sucursalActual.app_nombre||'Licorería')+' ✓');
+    showToast('¡Guardado! La app ahora se llama '+( nombre||sucursalActual.app_nombre||'LicorApp')+' ✓');
     brandLogoBase64=null;
     document.getElementById('brand-nombre').value='';
     document.getElementById('brand-url').value='';
@@ -2719,7 +2719,7 @@ async function generarPDFCaja(){
       <div style="font-size:13px;color:#6b6860">Bs ${Math.round(totalBs).toLocaleString('es-VE')}</div>
     </div>
   </div>
-  <div class="pdf-footer">Generado el ${new Date().toLocaleString('es-VE')} · Licorería App</div>`;
+  <div class="pdf-footer">Generado el ${new Date().toLocaleString('es-VE')} · LicorApp</div>`;
 
   document.getElementById('pdf-content-caja').innerHTML=html;
   document.getElementById('pdf-modal-caja').classList.add('open');
