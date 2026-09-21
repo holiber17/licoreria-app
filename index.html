@@ -993,7 +993,7 @@ async function fetchBCV(){
     // Fetch USD y EUR en paralelo
     const[rUSD,rEUR]=await Promise.all([
       fetch('https://ve.dolarapi.com/v1/dolares/oficial'),
-      fetch('https://ve.dolarapi.com/v1/dolares/euro')
+      fetch('https://ve.dolarapi.com/v1/cotizaciones')
     ]);
     if(!rUSD.ok)throw new Error();
     const dUSD=await rUSD.json();
@@ -1003,7 +1003,8 @@ async function fetchBCV(){
 
     if(rEUR.ok){
       const dEUR=await rEUR.json();
-      const tEUR=parseFloat(dEUR.promedio);
+      const cEUR=Array.isArray(dEUR)?dEUR.find(c=>String(c.moneda||'').toUpperCase()==='EUR'):dEUR;
+      const tEUR=parseFloat(cEUR&&cEUR.promedio);
       if(tEUR&&!isNaN(tEUR)){
         document.getElementById('tasa-eur-input').value=tEUR.toFixed(2);
         tasaEUR=tEUR;localStorage.setItem('tasaEur',tEUR);
