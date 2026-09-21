@@ -833,6 +833,7 @@ function saveTasaEur(){tasaEUR=tasaEur();localStorage.setItem('tasaEur',tasaEUR)
 function saveTasa(){tasaBCV=tasa();localStorage.setItem('tasa',tasaBCV);renderAll();}
 function fmtUSD(n){return'$'+(+n||0).toFixed(2);}
 function fmtHora(d){return new Date(d).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit'});}
+function nombreNegocio(){return sucursalActual?.app_nombre||sucursalActual?.nombre||'Mi negocio';}
 function fmtBs(n){return'Bs '+Math.round((+n||0)*tasa()).toLocaleString('es-VE');}
 function usdAEur(n){const tE=tasaEur();if(!tE)return 0;return(+n||0)*tasa()/tE;}
 function fmtEUR(n){return'€'+usdAEur(n).toFixed(2);}
@@ -2654,7 +2655,7 @@ function generarPDFCuenta(){
 
   let html=`<div class="pdf-header">
     <div class="pdf-logo">🍾</div>
-    <div class="pdf-title">${sucursalActual?.nombre||'Licorería'}</div>
+    <div class="pdf-title">${nombreNegocio()}</div>
     <div class="pdf-sub">Cuenta del pedido · ${fecha}</div>
     <div class="pdf-sub" style="margin-top:4px;font-weight:600">Cliente: ${pedidoActual.cliente_nombre}</div>
   </div>`;
@@ -2695,7 +2696,7 @@ async function generarPDFCaja(){
 
   let html=`<div class="pdf-header">
     <div class="pdf-logo">🍾</div>
-    <div class="pdf-title">${sucursalActual?.nombre||'Licorería'}</div>
+    <div class="pdf-title">${nombreNegocio()}</div>
     <div class="pdf-sub">Cierre de caja · ${fecha}</div>
     <div class="pdf-sub" style="margin-top:4px">Tasa BCV: ${tasaActual.toFixed(2)} Bs/$</div>
   </div>
@@ -2747,14 +2748,14 @@ function descargarPDF(tipo){
 }
 
 function compartirWhatsApp(tipo){
-  const nombre=tipo==='cuenta'?pedidoActual?.cliente_nombre||'cliente':sucursalActual?.nombre||'Licorería';
+  const nombre=tipo==='cuenta'?pedidoActual?.cliente_nombre||'cliente':nombreNegocio();
   const tasaActual=tasa();
   let texto='';
   if(tipo==='cuenta'){
     const items=pedidoActual?.pedido_items||[];
     const total=items.reduce((s,i)=>s+(i.consumido*i.precio_usd),0);
     const fecha=new Date().toLocaleDateString('es-VE',{day:'2-digit',month:'2-digit',year:'numeric'})+' · '+fmtHora(new Date());
-    texto=`🍾 *${sucursalActual?.nombre||'Licorería'}*
+    texto=`🍾 *${nombreNegocio()}*
 `;
     texto+=`📋 Cuenta de: *${nombre}*
 `;

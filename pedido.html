@@ -73,7 +73,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <body>
 <div class="shell">
   <div class="hdr">
-    <h1><i class="ti ti-bottle"></i> LicorApp</h1>
+    <h1><i class="ti ti-bottle"></i> <span id="negocio-nombre">Tu pedido</span></h1>
     <div class="live-badge" id="live-badge">
       <div class="live-dot"></div>
       En vivo
@@ -136,10 +136,26 @@ async function loadPedido(){
     }
 
     renderPedido(pedido);
+    mostrarNegocio(pedido.sucursal_id);
   checkNotifCliente(pedido.pedido_items||[]);
   }catch(e){
     document.getElementById('content').innerHTML='<div class="empty"><i class="ti ti-wifi-off"></i>Error de conexión.<br>Intenta de nuevo.</div>';
   }
+}
+
+async function mostrarNegocio(sucursalId){
+  if(!sucursalId)return;
+  try{
+    const r=await fetch(SUPA_URL+'/rest/v1/sucursales?select=nombre,app_nombre&id=eq.'+sucursalId,{
+      headers:{'apikey':SUPA_KEY,'Accept':'application/json'}
+    });
+    if(!r.ok)return;
+    const d=await r.json();
+    const nombre=d[0]&&(d[0].app_nombre||d[0].nombre);
+    if(!nombre)return;
+    document.getElementById('negocio-nombre').textContent=nombre;
+    document.title='Mi pedido — '+nombre;
+  }catch(e){}
 }
 
 function renderPedido(pedido){
