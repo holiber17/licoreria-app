@@ -22,6 +22,8 @@
   --danger:#c0392b;--danger-bg:#fdf0ee;
   --info:#1a5fa8;--info-bg:#e8f1fb;
   --radius:10px;--radius-lg:14px;
+  /* Zona reservada abajo: ahi se posan los widgets del hosting (badge de Netlify) y el pulgar en movil */
+  --badge-safe:56px;
 }
 .dark{
   --bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;
@@ -262,6 +264,7 @@ body.kiosco .hdr { padding:12px 20px; }
 .pdf-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:flex-end;justify-content:center}
 .pdf-modal.open{display:flex}
 .pdf-modal-inner{background:var(--bg);border-radius:var(--radius-lg) var(--radius-lg) 0 0;padding:20px 16px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+.pdf-modal-inner,#edit-modal>div,#mov-modal>div,#hist-modal>div{padding-bottom:calc(20px + var(--badge-safe) + env(safe-area-inset-bottom,0px))!important}
 </style>
 </head>
 <body>
@@ -829,6 +832,7 @@ function tasaEur(){return parseFloat(document.getElementById('tasa-eur-input')?.
 function saveTasaEur(){tasaEUR=tasaEur();localStorage.setItem('tasaEur',tasaEUR);renderAll();}
 function saveTasa(){tasaBCV=tasa();localStorage.setItem('tasa',tasaBCV);renderAll();}
 function fmtUSD(n){return'$'+(+n||0).toFixed(2);}
+function fmtHora(d){return new Date(d).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit'});}
 function fmtBs(n){return'Bs '+Math.round((+n||0)*tasa()).toLocaleString('es-VE');}
 function usdAEur(n){const tE=tasaEur();if(!tE)return 0;return(+n||0)*tasa()/tE;}
 function fmtEUR(n){return'€'+usdAEur(n).toFixed(2);}
@@ -971,7 +975,7 @@ function showErr(msg){const el=document.getElementById('auth-error');el.textCont
 function hideErr(){document.getElementById('auth-error').style.display='none';}
 function showToast(msg,type='success'){
   const t=document.createElement('div');
-  t.style.cssText=`position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--${type==='success'?'success':'danger'}-bg);color:var(--${type==='success'?'success':'danger'});padding:10px 18px;border-radius:99px;font-size:13px;font-weight:500;z-index:999;border:.5px solid var(--${type==='success'?'success':'danger'});box-shadow:0 2px 12px rgba(0,0,0,.15);white-space:nowrap`;
+  t.style.cssText=`position:fixed;bottom:calc(20px + var(--badge-safe));left:50%;transform:translateX(-50%);background:var(--${type==='success'?'success':'danger'}-bg);color:var(--${type==='success'?'success':'danger'});padding:10px 18px;border-radius:99px;font-size:13px;font-weight:500;z-index:999;border:.5px solid var(--${type==='success'?'success':'danger'});box-shadow:0 2px 12px rgba(0,0,0,.15);white-space:nowrap`;
   t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);
 }
 
@@ -1893,7 +1897,7 @@ async function verHistorial(clienteId){
   const totalUSD=caja.reduce((s,p)=>s+parseFloat(p.total_usd||0),0);
   const visitas=caja.length;
   const ticket=visitas>0?totalUSD/visitas:0;
-  const ultimaVisita=caja.length?new Date(caja[0].fecha).toLocaleDateString('es-VE',{day:'2-digit',month:'2-digit',year:'numeric'}):'Nunca';
+  const ultimaVisita=caja.length?new Date(caja[0].fecha).toLocaleDateString('es-VE',{day:'2-digit',month:'2-digit',year:'numeric'})+' · '+fmtHora(caja[0].fecha):'Nunca';
 
   document.getElementById('hist-modal-metrics').innerHTML=`
     <div class="metric"><div class="ml">Total gastado</div><div class="mv success" style="font-size:17px">${fmtUSD(totalUSD)}</div></div>
@@ -1927,7 +1931,7 @@ async function verHistorial(clienteId){
   // Últimas visitas
   document.getElementById('hist-modal-visitas').innerHTML=caja.length?caja.slice(0,8).map(p=>`<div class="res-row">
     <div>
-      <div style="font-size:13px;font-weight:600">${new Date(p.fecha).toLocaleDateString('es-VE',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'})}</div>
+      <div style="font-size:13px;font-weight:600">${new Date(p.fecha).toLocaleDateString('es-VE',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'})} · ${fmtHora(p.fecha)}</div>
       <div style="font-size:11px;color:var(--text2)">${p.metodo_pago||'Efectivo'}${p.nota?' · '+p.nota:''}</div>
     </div>
     <div style="text-align:right">
@@ -2686,7 +2690,7 @@ async function generarPDFCaja(){
   const caja=res.ok?await res.json():[];
   const totalUSD=caja.reduce((s,p)=>s+parseFloat(p.total_usd||0),0);
   const totalBs=caja.reduce((s,p)=>s+(parseFloat(p.total_usd||0)*parseFloat(p.tasa_bcv||tasa())),0);
-  const fecha=new Date().toLocaleDateString('es-VE',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  const fecha=new Date().toLocaleDateString('es-VE',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})+' · '+fmtHora(new Date());
   const tasaActual=tasa();
 
   let html=`<div class="pdf-header">
@@ -2749,7 +2753,7 @@ function compartirWhatsApp(tipo){
   if(tipo==='cuenta'){
     const items=pedidoActual?.pedido_items||[];
     const total=items.reduce((s,i)=>s+(i.consumido*i.precio_usd),0);
-    const fecha=new Date().toLocaleDateString('es-VE',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const fecha=new Date().toLocaleDateString('es-VE',{day:'2-digit',month:'2-digit',year:'numeric'})+' · '+fmtHora(new Date());
     texto=`🍾 *${sucursalActual?.nombre||'Licorería'}*
 `;
     texto+=`📋 Cuenta de: *${nombre}*
@@ -2771,7 +2775,7 @@ function compartirWhatsApp(tipo){
     // caja summary desde el modal
     texto=`🍾 *${nombre}*
 `;
-    texto+=`📊 Cierre de caja - ${new Date().toLocaleDateString('es-VE')}
+    texto+=`📊 Cierre de caja - ${new Date().toLocaleDateString('es-VE')} · ${fmtHora(new Date())}
 `;
     texto+=`
 Se generó el reporte del día.
