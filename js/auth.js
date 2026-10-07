@@ -121,4 +121,5 @@ async function launchApp(){
   pedirPermisoNotif();
   await loadMenu();await renderPedidos();
   fetchBCV();setInterval(fetchBCV,30*60*1000);
+  iniciarSolicitudes();
 }

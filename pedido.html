@@ -17,11 +17,11 @@
 <link rel="stylesheet" href="css/componentes.css">
 <link rel="stylesheet" href="css/pedido.css">
 </head>
-<body class="cliente-body">
+<body class="cliente-body" data-titulo="Mi pedido — ">
 <div class="shell">
   <header class="hdr">
     <div class="marca">
-      <img src="icon.svg" alt="">
+      <img id="negocio-logo" src="icon.svg" alt="">
       <h1 id="negocio-nombre">Tu pedido</h1>
     </div>
     <div class="live-badge" id="live-badge">
@@ -42,6 +42,17 @@
   </footer>
 </div>
 
+<div id="hoja-pago" class="modal">
+  <div class="hoja">
+    <div class="hoja-cab">
+      <span class="hoja-titulo">Pagar la cuenta</span>
+      <button class="icon-btn" onclick="cerrarPago()" aria-label="Cerrar"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="pago-cuerpo"></div>
+  </div>
+</div>
+
+<script src="js/publico.js"></script>
 <script src="js/pedido-cliente.js"></script>
 </body>
 </html>

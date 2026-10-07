@@ -333,6 +333,26 @@ body.app-body::before {
 .brand-preview img { width: 84px; height: 84px; margin: 0 auto; border-radius: 18px; object-fit: cover; border: 1px solid var(--linea-fuerte); }
 .brand-preview div { font-family: var(--serif); font-size: 20px; font-weight: 700; margin-top: 8px; }
 
+/* ---------- Avisos de clientes ---------- */
+.nav-tab { position: relative; }
+.nav-badge {
+  position: absolute; top: 2px; right: 6px; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: var(--radio-pill); background: var(--error); color: #fff;
+  font-size: 10.5px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+  animation: latir 1.6s ease-in-out infinite;
+}
+@keyframes latir { 50% { transform: scale(1.15); } }
+.solicitudes { border-color: color-mix(in srgb, var(--acento) 55%, transparent); background: var(--acento-suave); }
+.solicitud { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--linea); }
+.solicitud:last-child { border-bottom: none; padding-bottom: 0; }
+.solicitud .crece { cursor: pointer; }
+.sol-icono {
+  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 19px;
+  background: var(--superficie); color: var(--acento);
+}
+.solicitud.pagar .sol-icono { color: var(--ok); }
+
 /* ---------- Escritorio, tablet y pantalla completa: barra lateral ---------- */
 @media (min-width: 900px) {
   .shell { max-width: 1240px; flex-direction: row; height: 100vh; overflow: hidden; }

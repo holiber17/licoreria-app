@@ -13,7 +13,7 @@ function switchAdminTab(tab){
     mostrar('amt-'+t,t===tab);
     $('atab-'+t)?.classList.toggle('active',t===tab);
   });
-  if(tab==='sucursales'){renderSucursales();cargarBrandingActual();}
+  if(tab==='sucursales'){renderSucursales();cargarBrandingActual();renderCartaPublica();cargarDatosPago();}
   if(tab==='usuarios')renderUsuarios();
   if(tab==='reportes')renderReportes();
   if(tab==='empleados')renderActividadEmpleados();
@@ -345,4 +345,60 @@ function cargarBrandingActual(){
     $('brand-preview-nombre').textContent=sucursalActual.app_nombre;
     mostrar('brand-preview');
   }
+}
+
+// ---- CARTA PÚBLICA ----
+function urlCarta(){return new URL('carta.html?s='+sucursalActual.id,location.href).href;}
+function renderCartaPublica(){
+  if(!sucursalActual||!$('carta-url'))return;
+  const url=urlCarta();
+  $('carta-url').textContent=url;
+  $('carta-qr').innerHTML='<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data='+encodeURIComponent(url)+'" alt="QR de la carta">';
+}
+async function copiarCarta(){
+  try{await navigator.clipboard.writeText(urlCarta());showToast('Enlace copiado ✓');}
+  catch(e){prompt('Copia el enlace de la carta:',urlCarta());}
+}
+function abrirCarta(){window.open(urlCarta(),'_blank');}
+function compartirCarta(){
+  const texto=`🍾 *${nombreNegocio()}*\nMira nuestra carta y los precios del día:\n${urlCarta()}`;
+  window.open('https://api.whatsapp.com/send?text='+encodeURIComponent(texto),'_blank');
+}
+
+// ---- DATOS DE PAGO (los ve el cliente en la página del QR) ----
+const CAMPOS_PAGO={
+  pago_movil:{banco:'dp-pm-banco',telefono:'dp-pm-tel',cedula:'dp-pm-ced'},
+  transferencia:{banco:'dp-tr-banco',cuenta:'dp-tr-cuenta',titular:'dp-tr-titular',cedula:'dp-tr-ced'},
+  zelle:{correo:'dp-ze-correo',titular:'dp-ze-titular'}
+};
+function avisoPagoSinSql(){
+  estadoDatosPago('<i class="ti ti-database"></i> Falta un paso: ejecuta <strong>supabase/cliente.sql</strong> en Supabase para guardar los datos de pago.','aviso');
+}
+function estadoDatosPago(html,tipo){
+  const s=$('datos-pago-status');
+  if(!html){s.style.display='none';return;}
+  s.style.display='flex';s.className='banner mt-m '+tipo;s.innerHTML=html;
+}
+async function cargarDatosPago(){
+  if(!sucursalActual||!$('dp-pm-banco'))return;
+  estadoDatosPago('');
+  const r=await rest('sucursales?select=datos_pago&id=eq.'+sucursalActual.id);
+  if(r.status===400){avisoPagoSinSql();return;}
+  const d=r.ok?(await r.json())[0]?.datos_pago||{}:{};
+  Object.entries(CAMPOS_PAGO).forEach(([m,campos])=>{
+    Object.entries(campos).forEach(([k,id])=>{$(id).value=(d[m]||{})[k]||'';});
+  });
+}
+async function guardarDatosPago(){
+  if(!sucursalActual)return;
+  const datos={};
+  Object.entries(CAMPOS_PAGO).forEach(([m,campos])=>{
+    datos[m]={};
+    Object.entries(campos).forEach(([k,id])=>{const v=$(id).value.trim();if(v)datos[m][k]=v;});
+  });
+  const r=await restPatch('sucursales',sucursalActual.id,{datos_pago:datos});
+  if(r.status===400){avisoPagoSinSql();return;}
+  if(!r.ok){showToast('Error al guardar','danger');return;}
+  estadoDatosPago('');
+  showToast('Datos de pago guardados ✓');
 }

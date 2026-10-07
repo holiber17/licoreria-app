@@ -132,6 +132,7 @@ function showToast(msg,type='success'){
   document.body.appendChild(t);setTimeout(()=>t.remove(),2500);
 }
 function toastAlerta(html,ms=5000){
+  document.querySelectorAll('.toast.alerta').forEach(x=>x.remove());
   const t=document.createElement('div');
   t.className='toast alerta';
   t.innerHTML='<i class="ti ti-alert-triangle"></i><span>'+html+'</span>';

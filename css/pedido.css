@@ -16,7 +16,7 @@ body.cliente-body {
   padding: 16px; border-bottom: 1px solid var(--linea);
 }
 .marca { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.marca img { width: 36px; height: 36px; border-radius: 10px; }
+.marca img { width: 36px; height: 36px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
 .marca h1 { font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .live-badge {
@@ -79,3 +79,106 @@ body.cliente-body {
   border-top: 1px solid var(--linea);
 }
 .footer strong { color: var(--acento); font-weight: 700; }
+
+.pie-tasa { text-align: center; font-size: 12px; color: var(--apagado); margin: 4px 0 14px; }
+a.btn { text-decoration: none; }
+
+/* ---------- Acciones del cliente ---------- */
+.acciones-cliente { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.acciones-cliente .btn { flex-direction: column; gap: 6px; padding: 14px 10px; white-space: normal; text-align: center; line-height: 1.2; }
+.acciones-cliente .btn i { font-size: 24px; }
+.btn:disabled { opacity: .6; cursor: default; transform: none; }
+
+/* ---------- Controles compartidos con la app ---------- */
+.mtoggle { display: flex; gap: 4px; flex-shrink: 0; }
+.mtbtn {
+  min-width: 36px; padding: 5px 10px; border-radius: var(--radio-pill);
+  border: 1px solid var(--linea-fuerte); background: transparent;
+  color: var(--tinta-suave); font-size: 12.5px; font-weight: 800;
+}
+.mtbtn.active { background: var(--acento); border-color: var(--acento); color: var(--acento-tinta); }
+.cbtn {
+  width: 38px; height: 38px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--linea-fuerte); background: var(--superficie-2);
+  color: var(--tinta); font-size: 20px; line-height: 1;
+}
+.cbtn:active { transform: scale(.9); }
+.cval { min-width: 28px; text-align: center; font-size: 18px; font-weight: 800; }
+.metodos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.metodo-btn {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 11px 8px; border-radius: var(--radio-s);
+  border: 1px solid var(--linea-fuerte); background: var(--superficie);
+  color: var(--tinta-suave); font-size: 13px; font-weight: 600;
+}
+.metodo-btn i { font-size: 18px; }
+.metodo-btn.active { border-color: var(--acento); background: var(--acento-suave); color: var(--acento); font-weight: 700; }
+
+/* ---------- Hoja de pago ---------- */
+.pago-total { text-align: center; padding: 6px 0 14px; }
+.pago-usd { font-family: var(--serif); font-size: 40px; font-weight: 700; color: var(--acento); line-height: 1.1; margin-top: 4px; }
+.pago-bs { font-size: 15px; font-weight: 700; color: var(--tinta-suave); }
+.dividir {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 14px; border-radius: var(--radio-m);
+  background: var(--superficie-2); border: 1px solid var(--linea);
+  font-size: 14px; font-weight: 600;
+}
+.dividir i { color: var(--acento); }
+.contador { display: flex; align-items: center; gap: 6px; }
+.datos-pago { margin-top: 12px; border: 1px solid var(--linea); border-radius: var(--radio-m); padding: 4px 14px; background: var(--superficie-2); }
+.dato-pago { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--linea); }
+.dato-pago:last-child { border-bottom: none; }
+.dato-pago .t-fuerte { font-size: 15px; word-break: break-all; }
+.btn.copiado { color: var(--ok); border-color: var(--ok); }
+
+/* ---------- Carta pública ---------- */
+.carta-hero { text-align: center; padding: 14px 0 18px; }
+.carta-lema { font-size: 11px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: var(--acento); }
+.carta-titulo { font-family: var(--serif); font-size: 30px; font-weight: 700; margin: 4px 0 8px; }
+.carta-tasa {
+  display: inline-block; padding: 5px 12px; border-radius: var(--radio-pill);
+  background: var(--superficie); border: 1px solid var(--linea);
+  font-size: 12px; font-weight: 600; color: var(--tinta-suave);
+}
+.carta-filtros {
+  position: sticky; top: 0; z-index: 10;
+  margin: 0 -16px 4px; padding: 10px 16px 8px;
+  background: color-mix(in srgb, var(--fondo) 90%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.carta-filtros .sbar { margin-bottom: 10px; }
+.chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex-shrink: 0; padding: 7px 13px; border-radius: var(--radio-pill);
+  border: 1px solid var(--linea-fuerte); background: var(--superficie);
+  color: var(--tinta-suave); font-size: 13px; font-weight: 700; white-space: nowrap;
+}
+.chip.active { background: var(--acento); border-color: var(--acento); color: var(--acento-tinta); }
+
+.carta-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.carta-item {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--radio-m);
+}
+.carta-foto { position: relative; aspect-ratio: 4 / 3; background: var(--superficie-2); }
+.carta-img { width: 100%; height: 100%; object-fit: cover; }
+.carta-icono {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 46px;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--acento) 24%, transparent), transparent 65%), var(--superficie-2);
+}
+.carta-info { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.carta-nombre { font-size: 14px; font-weight: 700; line-height: 1.25; }
+.carta-detalle { font-size: 11.5px; color: var(--apagado); }
+.carta-precio { margin-top: auto; padding-top: 6px; font-size: 18px; font-weight: 800; color: var(--acento); display: flex; flex-direction: column; }
+.carta-precio span { font-size: 11.5px; font-weight: 600; color: var(--apagado); }
+.carta-combo { font-size: 11px; color: var(--tinta-suave); }
+.carta-item.agotado { opacity: .55; }
+.carta-agotado {
+  position: absolute; top: 8px; left: 8px;
+  padding: 3px 9px; border-radius: var(--radio-pill);
+  background: var(--error); color: #fff; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+}
+@media (min-width: 640px) { .carta-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

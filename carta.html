@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Nuestra carta</title>
+<meta name="theme-color" content="#110e0c">
+<meta name="description" content="Carta de productos y precios del día">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/componentes.css">
+<link rel="stylesheet" href="css/pedido.css">
+</head>
+<body class="cliente-body" data-titulo="Carta — ">
+<div class="shell">
+  <header class="hdr">
+    <div class="marca">
+      <img id="negocio-logo" src="icon.svg" alt="">
+      <h1 id="negocio-nombre">Nuestra carta</h1>
+    </div>
+    <div class="mtoggle" role="group" aria-label="Moneda">
+      <button class="mtbtn active" id="cm-usd" onclick="setMonedaCarta('usd')">$</button>
+      <button class="mtbtn" id="cm-bs" onclick="setMonedaCarta('bs')">Bs</button>
+      <button class="mtbtn" id="cm-eur" onclick="setMonedaCarta('eur')">€</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <section class="carta-hero">
+      <div class="carta-lema">Carta del día</div>
+      <div class="carta-titulo">Precios actualizados</div>
+      <div class="carta-tasa" id="carta-tasa">Cargando tasa…</div>
+    </section>
+
+    <div class="carta-filtros">
+      <input class="sbar" id="carta-buscar" placeholder="Buscar ron, cerveza, combo..." oninput="renderCarta()">
+      <div class="chips" id="carta-chips"></div>
+    </div>
+
+    <div id="carta-lista">
+      <div class="loading"><div class="spinner"></div><span>Cargando la carta...</span></div>
+    </div>
+  </main>
+
+  <footer class="footer" id="carta-pie">
+    Precios en dólares a la tasa oficial BCV · <strong>LicorApp</strong>
+  </footer>
+</div>
+
+<script src="js/publico.js"></script>
+<script src="js/carta.js"></script>
+</body>
+</html>

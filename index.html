@@ -127,6 +127,7 @@
     <!-- ==================== PEDIDOS ==================== -->
     <section id="sec-pedidos" class="sec active">
       <div id="s-lista" class="scr active">
+        <div id="solicitudes-panel" class="card solicitudes" style="display:none"></div>
         <div class="top-bar">
           <h2>Pedidos activos</h2>
           <button class="btn sm primary" onclick="toggleNuevo()"><i class="ti ti-plus"></i> Nuevo</button>
@@ -389,6 +390,43 @@
         </div>
 
         <div class="card">
+          <div class="ch"><i class="ti ti-book"></i> Carta pública</div>
+          <p class="t-sub mb-m">Tus clientes ven los productos y precios del día sin iniciar sesión. Imprime el QR para las mesas o comparte el enlace.</p>
+          <div id="carta-qr" class="qr-caja"></div>
+          <div id="carta-url" class="qr-url"></div>
+          <div class="grupo-btn">
+            <button class="btn sm" onclick="copiarCarta()"><i class="ti ti-copy"></i> Copiar</button>
+            <button class="btn sm" onclick="abrirCarta()"><i class="ti ti-external-link"></i> Ver</button>
+            <button class="btn sm success" onclick="compartirCarta()"><i class="ti ti-brand-whatsapp"></i> Enviar</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch"><i class="ti ti-wallet"></i> Datos de pago para clientes</div>
+          <p class="t-sub mb-m">Aparecen en la página del pedido con botón de copiar y el monto exacto. Deja en blanco lo que no uses.</p>
+          <div class="slabel" style="margin-top:4px"><i class="ti ti-device-mobile"></i> Pago móvil</div>
+          <div class="row2">
+            <div class="fg"><label for="dp-pm-banco">Banco</label><input id="dp-pm-banco" placeholder="Banesco (0134)"></div>
+            <div class="fg"><label for="dp-pm-tel">Teléfono</label><input id="dp-pm-tel" type="tel" placeholder="0414-0000000"></div>
+          </div>
+          <div class="fg"><label for="dp-pm-ced">Cédula / RIF</label><input id="dp-pm-ced" placeholder="V-12345678"></div>
+          <div class="slabel"><i class="ti ti-arrows-exchange"></i> Transferencia</div>
+          <div class="row2">
+            <div class="fg"><label for="dp-tr-banco">Banco</label><input id="dp-tr-banco" placeholder="Mercantil"></div>
+            <div class="fg"><label for="dp-tr-ced">Cédula / RIF</label><input id="dp-tr-ced" placeholder="J-12345678-9"></div>
+          </div>
+          <div class="fg"><label for="dp-tr-cuenta">Número de cuenta</label><input id="dp-tr-cuenta" inputmode="numeric" placeholder="0105 0000 00 0000000000"></div>
+          <div class="fg"><label for="dp-tr-titular">Titular</label><input id="dp-tr-titular" placeholder="Nombre del titular"></div>
+          <div class="slabel"><i class="ti ti-building-bank"></i> Zelle</div>
+          <div class="row2">
+            <div class="fg"><label for="dp-ze-correo">Correo</label><input id="dp-ze-correo" type="email" placeholder="pagos@correo.com"></div>
+            <div class="fg"><label for="dp-ze-titular">Titular</label><input id="dp-ze-titular" placeholder="Nombre del titular"></div>
+          </div>
+          <button class="btn primary full" onclick="guardarDatosPago()"><i class="ti ti-check"></i> Guardar datos de pago</button>
+          <div id="datos-pago-status" class="banner mt-m" style="display:none"></div>
+        </div>
+
+        <div class="card">
           <div class="ch"><i class="ti ti-database-export"></i> Backup de datos</div>
           <p class="t-sub mb-m">Exporta toda la configuración e historial de tu negocio en un archivo JSON.</p>
           <div class="grupo-btn">
@@ -577,6 +615,7 @@
 <script src="js/inventario.js"></script>
 <script src="js/clientes.js"></script>
 <script src="js/actividad.js"></script>
+<script src="js/solicitudes.js"></script>
 <script src="js/admin.js"></script>
 <script src="js/pdf.js"></script>
 <script src="js/main.js"></script>
