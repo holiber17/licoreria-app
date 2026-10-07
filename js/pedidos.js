@@ -176,19 +176,30 @@ async function cancelarPedido(){
   await sb.from('pedidos').update({estado:'cancelado'}).eq('id',pedidoActual.id);
   pedidoActual=null;goLista();
 }
-async function cobrarPedido(){
-  if(!pedidoActual)return;
+// El cobro ocurre entero dentro de Supabase (función cobrar_pedido):
+// cierra el pedido, registra en caja y descuenta el stock en una sola
+// operación. Si se toca dos veces, la segunda falla con "ya fue cobrado".
+async function cobrarPedido(boton){
+  if(!pedidoActual||accionesEnCurso.has('cobrar'))return;
   const items=(pedidoActual.pedido_items||[]).filter(i=>i.consumido>0);
   if(!items.length){alert('No hay nada consumido aún.');return;}
   const total=items.reduce((s,i)=>s+(i.consumido*i.precio_usd),0);
   const nota=$('nota-cobro').value.trim();
   if(!confirm(`¿Cobrar ${fmtUSD(total)} (${fmtBs(total)}) a ${pedidoActual.cliente_nombre}?`))return;
-  await sb.from('pedidos').update({estado:'cobrado',nota,tasa_bcv:tasa()}).eq('id',pedidoActual.id);
-  await restInsert('caja',{sucursal_id:sucursalActual.id,pedido_id:pedidoActual.id,usuario_id:user.id,cliente_nombre:pedidoActual.cliente_nombre,total_usd:total,tasa_bcv:tasa(),nota,metodo_pago:metodoPago,fecha:new Date().toISOString()});
-  sonidoCaja();showToast(`Cobrado ${fmtUSD(total)} ✓`);
-  // Descontar inventario automáticamente
-  descontarInventario(items);
-  pedidoActual=null;goLista();switchGNav('caja');
+  const botones=[...document.querySelectorAll('[data-accion="cobrar"]')];
+  botones.forEach(b=>{b.disabled=true;b.classList.add('cargando');});
+  await enCurso('cobrar',null,async()=>{
+    const{data,error}=await sb.rpc('cobrar_pedido',{p_pedido:pedidoActual.id,p_metodo:metodoPago,p_nota:nota,p_tasa:tasa()});
+    if(error){
+      showToast(msgError(error,'No se pudo cobrar. Intenta de nuevo.'),'danger');
+      // Si ya estaba cobrado (p. ej. desde otro teléfono), volver a la lista
+      if(/ya fue cobrado/i.test(error.message||'')){pedidoActual=null;goLista();}
+      return;
+    }
+    sonidoCaja();showToast(`Cobrado ${fmtUSD(data?.total_usd??total)} ✓`);
+    pedidoActual=null;goLista();switchGNav('caja');
+    if(invItems.length)loadInventario();
+  }).finally(()=>botones.forEach(b=>{b.disabled=false;b.classList.remove('cargando');}));
 }
 
 // ---- QR ----
@@ -234,11 +245,14 @@ async function agregarDesdeMenu(menuId){
   const prod=menuItems.find(m=>m.id===menuId);if(!prod)return;
   let cant=1;
   if(prod.tipo==='suelto'){const inp=prompt(`¿Cuántas ${prod.unidad}s de "${prod.nombre}"?`,'1');if(inp===null)return;cant=parseInt(inp)||1;if(cant<1)return;}
-  const item={pedido_id:pedidoActual.id,nombre:prod.nombre,tipo:prod.tipo,total:prod.tipo==='combo'?prod.unidades_combo:cant,consumido:0,precio_usd:prod.precio_usd,unidad:prod.unidad};
-  const{data}=await sb.from('pedido_items').insert(item).select().single();
-  if(!pedidoActual.pedido_items)pedidoActual.pedido_items=[];
-  pedidoActual.pedido_items.push(data);
-  feedback();switchTab('consumo');
+  const item={pedido_id:pedidoActual.id,menu_id:prod.id,nombre:prod.nombre,tipo:prod.tipo,total:prod.tipo==='combo'?prod.unidades_combo:cant,consumido:0,precio_usd:prod.precio_usd,unidad:prod.unidad};
+  await enCurso('agregar-'+menuId,null,async()=>{
+    const{data,error}=await sb.from('pedido_items').insert(item).select().single();
+    if(error){showToast(msgError(error,'No se pudo agregar'),'danger');return;}
+    if(!pedidoActual.pedido_items)pedidoActual.pedido_items=[];
+    pedidoActual.pedido_items.push(data);
+    feedback();switchTab('consumo');
+  });
 }
 function toggleCustom(){alternar('custom-form');}
 function toggleTipo(){const v=$('tipo-item').value;mostrar('f-combo',v==='combo');mostrar('f-suelto',v==='suelto');}

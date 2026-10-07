@@ -310,6 +310,12 @@ body.app-body::before {
 }
 .btn-claro { background: rgba(255, 255, 255, .15); border: none; color: #fff; padding: 8px 14px; border-radius: var(--radio-s); }
 
+/* Enlace inventario ↔ menú */
+.enlace-menu { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 12px; color: var(--tinta-suave); }
+.enlace-menu i { color: var(--acento); }
+.enlace-menu span { white-space: nowrap; }
+.enlace-menu select { flex: 1; min-width: 0; }
+
 /* ---------- Actividad ---------- */
 .barra-hora { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
 .barra-hora .h { font-size: 12px; color: var(--tinta-suave); min-width: 54px; }

@@ -25,18 +25,19 @@ function estadoStock(i){
   return{pct,clase:'ok',barra:'',msg:'',icono:''};
 }
 
-// ---- AUTO DESCUENTO AL COBRAR ----
-async function descontarInventario(itemsVendidos){
-  if(!invItems.length)return;
-  for(const item of itemsVendidos){
-    const inv=invItems.find(i=>i.nombre.toLowerCase()===item.nombre.toLowerCase());
-    if(!inv||inv.stock_actual<=0)continue;
-    const cantidad=item.consumido;
-    const nuevoStock=Math.max(0,inv.stock_actual-cantidad);
-    await restPatch('inventario',inv.id,{stock_actual:nuevoStock,updated_at:new Date().toISOString()});
-    await restInsert('inventario_movimientos',{inventario_id:inv.id,sucursal_id:sucursalActual.id,usuario_id:user.id,tipo:'salida',cantidad,motivo:'Venta automática'});
-    inv.stock_actual=nuevoStock;
-  }
+// El descuento por ventas ocurre dentro de la función cobrar_pedido
+// (supabase/cobro.sql); aquí ya no se toca el stock al cobrar.
+
+// Opciones del menú para enlazar un producto del inventario
+function opcionesMenu(seleccionado){
+  return '<option value="">Sin enlazar</option>'+
+    menuItems.map(m=>`<option value="${m.id}" ${m.id===seleccionado?'selected':''}>${esc(m.nombre)}</option>`).join('');
+}
+async function enlazarMenu(invId,menuId){
+  const r=await restPatch('inventario',invId,{menu_id:menuId||null});
+  if(!r.ok){showToast('No se pudo enlazar','danger');return;}
+  const inv=invItems.find(i=>i.id===invId);if(inv)inv.menu_id=menuId||null;
+  showToast(menuId?'Enlazado: se descontará al vender ✓':'Enlace quitado');
 }
 
 // ---- LISTA ----
@@ -78,6 +79,9 @@ function renderInventario(){
         </div>
       </div>
       <div class="prog-bar mb-m"><div class="prog-fill ${e.barra}" style="width:${e.pct}%"></div></div>
+      <label class="enlace-menu"><i class="ti ti-link"></i><span>Se descuenta al vender</span>
+        <select class="campo sm" onchange="enlazarMenu('${i.id}',this.value)">${opcionesMenu(i.menu_id)}</select>
+      </label>
       <div class="fila gap-s">
         <button class="btn sm success crece" onclick="abrirMovModal('${i.id}','entrada')"><i class="ti ti-plus"></i> Entrada</button>
         <button class="btn sm danger crece" onclick="abrirMovModal('${i.id}','salida')"><i class="ti ti-minus"></i> Salida</button>
@@ -89,11 +93,12 @@ function renderInventario(){
 }
 
 // ---- ALTA ----
-function toggleInvForm(){if(alternar('inv-form'))$('if-nombre').focus();}
+function toggleInvForm(){if(alternar('inv-form')){$('if-menu').innerHTML=opcionesMenu('');$('if-nombre').focus();}}
 function togglePorCaja(){mostrar('if-caja-fields',$('if-porcaja').checked);}
 
-async function guardarInventario(){
+async function guardarInventario(boton){
   const nombre=$('if-nombre').value.trim();
+  const menuId=$('if-menu').value||null;
   const codigo=$('if-codigo').value.trim()||null;
   const stock=parseFloat($('if-stock').value)||0;
   const min=parseFloat($('if-min').value)||5;
@@ -101,15 +106,19 @@ async function guardarInventario(){
   const porCaja=$('if-porcaja').checked;
   const upc=parseInt($('if-upc').value)||1;
   if(!nombre){alert('Escribe el nombre');return;}
-  await restInsert('inventario',{sucursal_id:sucursalActual.id,nombre,codigo_barra:codigo,stock_actual:stock,stock_minimo:min,unidad,por_caja:porCaja,unidades_por_caja:upc});
-  // Registrar movimiento inicial si hay stock
-  if(stock>0){
-    const data=await restGet('inventario?select=id&sucursal_id=eq.'+sucursalActual.id+'&nombre=eq.'+encodeURIComponent(nombre)+'&order=created_at.desc&limit=1');
-    if(data[0]){
-      await restInsert('inventario_movimientos',{inventario_id:data[0].id,sucursal_id:sucursalActual.id,usuario_id:user.id,tipo:'entrada',cantidad:stock,motivo:'Stock inicial'});
+  const ok=await enCurso('guardar-inv',boton,async()=>{
+    // Se crea en 0 y el stock inicial entra como movimiento, así queda en el historial
+    const r=await restInsert('inventario',{sucursal_id:sucursalActual.id,menu_id:menuId,nombre,codigo_barra:codigo,stock_actual:0,stock_minimo:min,unidad,por_caja:porCaja,unidades_por_caja:upc},'return=representation');
+    if(!r.ok){showToast('No se pudo guardar el producto','danger');return false;}
+    const nuevo=(await r.json())[0];
+    if(stock>0&&nuevo){
+      const{error}=await sb.rpc('mover_stock',{p_inventario:nuevo.id,p_tipo:'entrada',p_cantidad:stock,p_motivo:'Stock inicial'});
+      if(error)showToast('Producto creado, pero no se registró el stock inicial','danger');
     }
-  }
-  ['if-nombre','if-codigo','if-stock','if-min','if-upc'].forEach(id=>{const el=$(id);if(el)el.value='';});
+    return true;
+  });
+  if(!ok)return;
+  ['if-nombre','if-codigo','if-stock','if-min','if-upc','if-menu'].forEach(id=>{const el=$(id);if(el)el.value='';});
   $('if-porcaja').checked=false;
   mostrar('if-caja-fields',false);
   mostrar('inv-form',false);
@@ -142,24 +151,23 @@ function selMovTipo(t){
   marcarActivo('mov-',['entrada','salida','ajuste'],t);
 }
 
-async function guardarMovimiento(){
+// La suma/resta ocurre dentro de Supabase (función mover_stock), así dos
+// teléfonos no se pisan el stock.
+async function guardarMovimiento(boton){
   if(!movItemId)return;
-  const cantidad=parseFloat($('mov-cantidad').value)||0;
+  const valor=$('mov-cantidad').value.trim();
+  const cantidad=parseFloat(valor);
   const motivo=$('mov-motivo').value.trim();
-  if(cantidad<=0){alert('Ingresa una cantidad válida');return;}
-  // Leer el stock actual del servidor
-  const invData=await restGet('inventario?select=stock_actual&id=eq.'+movItemId);
-  const stockActual=parseFloat(invData[0]?.stock_actual||0);
-  let nuevoStock=stockActual;
-  if(movTipo==='entrada')nuevoStock=stockActual+cantidad;
-  else if(movTipo==='salida')nuevoStock=Math.max(0,stockActual-cantidad);
-  else nuevoStock=cantidad; // ajuste directo
-  await restPatch('inventario',movItemId,{stock_actual:nuevoStock,updated_at:new Date().toISOString()});
-  await restInsert('inventario_movimientos',{inventario_id:movItemId,sucursal_id:sucursalActual.id,usuario_id:user.id,tipo:movTipo,cantidad,motivo:motivo||null});
-  cerrarMovModal();
-  showToast('Movimiento registrado ✓');
-  await loadInventario();
-  feedback();
+  const valida=valor!==''&&!isNaN(cantidad)&&(cantidad>0||(movTipo==='ajuste'&&cantidad===0));
+  if(!valida){alert(movTipo==='ajuste'?'Ingresa el stock real (puede ser 0)':'Ingresa una cantidad mayor que 0');return;}
+  await enCurso('mover-stock',boton,async()=>{
+    const{data,error}=await sb.rpc('mover_stock',{p_inventario:movItemId,p_tipo:movTipo,p_cantidad:cantidad,p_motivo:motivo});
+    if(error){showToast(msgError(error,'No se pudo registrar'),'danger');return;}
+    cerrarMovModal();
+    showToast(`Movimiento registrado · stock: ${data} ✓`);
+    await loadInventario();
+    feedback();
+  });
 }
 
 // ---- ESCÁNER DE CÓDIGO DE BARRAS ----

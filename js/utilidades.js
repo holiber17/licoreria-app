@@ -140,6 +140,28 @@ function toastAlerta(html,ms=5000){
   setTimeout(()=>t.remove(),ms);
 }
 
+// ---- ACCIONES EN CURSO ----
+// Evita el doble toque: mientras la acción corre, el botón queda
+// desactivado con un indicador y una segunda llamada se ignora.
+const accionesEnCurso=new Set();
+async function enCurso(clave,boton,fn){
+  if(accionesEnCurso.has(clave))return;
+  accionesEnCurso.add(clave);
+  const botones=boton?[boton]:[];
+  botones.forEach(b=>{b.disabled=true;b.classList.add('cargando');});
+  try{return await fn();}
+  finally{
+    accionesEnCurso.delete(clave);
+    botones.forEach(b=>{b.disabled=false;b.classList.remove('cargando');});
+  }
+}
+// Mensaje legible de un error de Supabase / PostgREST
+function msgError(error,porDefecto='Algo salió mal. Intenta de nuevo.'){
+  const m=error?.message||'';
+  if(!m||/fetch|network|Failed/i.test(m))return navigator.onLine===false?'Sin conexión a internet':porDefecto;
+  return m;
+}
+
 // ---- MOSTRAR / OCULTAR ----
 function $(id){return document.getElementById(id);}
 function mostrar(id,v=true,modo='block'){const el=$(id);if(el)el.style.display=v?modo:'none';}
