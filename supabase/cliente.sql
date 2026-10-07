@@ -71,7 +71,14 @@ create policy "menu publico" on public.menu
   for select to anon
   using (activo = true);
 
--- 4) OPCIONAL: marcar "Agotado" en el menú público.
+-- 4) Datos públicos del negocio (nombre, logo, dirección y datos de pago)
+--    para la carta y la página del pedido. Solo lectura.
+drop policy if exists "sucursal publica" on public.sucursales;
+create policy "sucursal publica" on public.sucursales
+  for select to anon
+  using (true);
+
+-- 5) OPCIONAL: marcar "Agotado" en el menú público.
 --    Ojo: deja ver el stock de cada producto a cualquiera con el enlace.
 --    Si te parece bien, quita los dos guiones de las 3 líneas siguientes.
 -- create policy "stock publico" on public.inventario
