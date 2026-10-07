@@ -1,0 +1,81 @@
+/* ==========================================================
+   Página pública del cliente (pedido.html): consumo en vivo
+   ========================================================== */
+
+body.cliente-body {
+  display: flex; justify-content: center;
+  background:
+    radial-gradient(700px 360px at 50% -80px, color-mix(in srgb, var(--acento) 18%, transparent), transparent 70%),
+    var(--fondo);
+}
+
+.shell { width: 100%; max-width: 520px; min-height: 100vh; display: flex; flex-direction: column; }
+
+.hdr {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 16px; border-bottom: 1px solid var(--linea);
+}
+.marca { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.marca img { width: 36px; height: 36px; border-radius: 10px; }
+.marca h1 { font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.live-badge {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+  padding: 5px 11px; border-radius: var(--radio-pill);
+  font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  background: var(--error-suave); color: var(--error);
+}
+.live-badge.cobrado { background: var(--ok-suave); color: var(--ok); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: pulso 1.5s infinite; }
+@keyframes pulso { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+
+.content { flex: 1; padding: 16px 16px calc(24px + var(--badge-safe)); }
+
+.cliente-header { text-align: center; padding: 18px 16px 20px; }
+.cliente-header .avatar { margin: 0 auto 12px; }
+.cliente-nombre { font-family: var(--serif); font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+.cliente-sub { font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--acento); }
+
+.total-box {
+  position: relative; overflow: hidden;
+  background: var(--superficie);
+  border: 1px solid var(--linea-fuerte);
+  border-radius: var(--radio-l);
+  padding: 22px 20px; text-align: center; margin-bottom: 14px;
+}
+.total-box::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--brillo); }
+.total-label { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--apagado); margin-bottom: 8px; }
+.total-usd { font-family: var(--serif); font-size: 44px; font-weight: 700; line-height: 1; color: var(--acento); margin-bottom: 8px; }
+.total-bs { font-size: 15px; color: var(--tinta-suave); font-weight: 600; }
+
+.item-info { flex: 1; min-width: 0; }
+.item-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-sub { font-size: 12px; color: var(--tinta-suave); margin-top: 4px; }
+
+.cat-icon-sm, .prod-img-sm { width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0; border: 1px solid var(--linea); font-size: 22px; }
+.cat-icon-sm {
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--acento) 22%, transparent), transparent 65%), var(--superficie-2);
+}
+.prod-img-sm { object-fit: cover; }
+
+.restante-badge { display: inline-block; padding: 3px 9px; border-radius: var(--radio-pill); font-size: 11px; font-weight: 700; }
+.rb-ok { background: var(--ok-suave); color: var(--ok); }
+.rb-warn { background: var(--aviso-suave); color: var(--aviso); }
+.rb-full { background: var(--error-suave); color: var(--error); }
+
+.cobrado-banner {
+  text-align: center; padding: 18px; margin-bottom: 14px;
+  background: var(--ok-suave); border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent);
+  border-radius: var(--radio-m); color: var(--ok);
+}
+.cobrado-banner i { font-size: 34px; display: block; margin-bottom: 6px; }
+.cobrado-banner p { font-size: 15px; font-weight: 700; }
+
+.loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; min-height: 50vh; color: var(--tinta-suave); }
+
+.footer {
+  padding: 16px; text-align: center; font-size: 11.5px; color: var(--apagado);
+  border-top: 1px solid var(--linea);
+}
+.footer strong { color: var(--acento); font-weight: 700; }

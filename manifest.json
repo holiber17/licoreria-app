@@ -4,8 +4,8 @@
   "description": "Punto de venta, inventario y reportes para licorerías y bodegones",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#1a1a1a",
+  "background_color": "#110e0c",
+  "theme_color": "#110e0c",
   "orientation": "portrait",
   "icons": [
     {
