@@ -1,0 +1,96 @@
+/* ==========================================================
+   LicorApp — tokens de diseño
+   Identidad "bodega premium": carbón cálido, ámbar whisky y
+   detalles dorados. El tema oscuro es el principal; el claro
+   imita una etiqueta crema impresa.
+   ========================================================== */
+
+:root {
+  /* Superficies */
+  --fondo: #110e0c;
+  --superficie: #1a1613;
+  --superficie-2: #231e1a;
+  --superficie-3: #2e2722;
+  --linea: rgba(230, 196, 140, .11);
+  --linea-fuerte: rgba(230, 196, 140, .22);
+
+  /* Texto */
+  --tinta: #f4ece1;
+  --tinta-suave: #c2b4a1;
+  --apagado: #857866;
+
+  /* Marca */
+  --acento: #d9a54a;
+  --acento-hover: #ebbb63;
+  --acento-tinta: #1a1208;
+  --acento-suave: rgba(217, 165, 74, .14);
+  --vino: #8c2f3f;
+  --brillo: linear-gradient(135deg, #f0c674 0%, #d9a54a 45%, #a8742a 100%);
+
+  /* Estados */
+  --ok: #7ccb98;
+  --ok-suave: rgba(124, 203, 152, .13);
+  --aviso: #f2a65a;
+  --aviso-suave: rgba(242, 166, 90, .14);
+  --error: #f07a6c;
+  --error-suave: rgba(240, 122, 108, .13);
+  --info: #8fb4e3;
+  --info-suave: rgba(143, 180, 227, .13);
+
+  /* Tipografía */
+  --serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --sans: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Forma */
+  --radio-xs: 8px;
+  --radio-s: 12px;
+  --radio-m: 16px;
+  --radio-l: 22px;
+  --radio-pill: 999px;
+
+  /* Profundidad */
+  --sombra-1: 0 1px 2px rgba(0, 0, 0, .35);
+  --sombra-2: 0 10px 30px -10px rgba(0, 0, 0, .6);
+  --sombra-acento: 0 8px 24px -8px rgba(217, 165, 74, .45);
+  --velo: rgba(8, 6, 5, .72);
+
+  /* Zona reservada abajo: ahí se posan los widgets del hosting (badge de Netlify) y el pulgar en móvil */
+  --badge-safe: 56px;
+
+  color-scheme: dark;
+}
+
+:root[data-tema="claro"] {
+  --fondo: #efe8dc;
+  --superficie: #fffcf6;
+  --superficie-2: #f6efe3;
+  --superficie-3: #ebe2d3;
+  --linea: rgba(70, 48, 20, .12);
+  --linea-fuerte: rgba(70, 48, 20, .24);
+
+  --tinta: #1f1812;
+  --tinta-suave: #5c4e3f;
+  --apagado: #8a7b69;
+
+  --acento: #9c6a1c;
+  --acento-hover: #7f5513;
+  --acento-tinta: #fffaf0;
+  --acento-suave: rgba(156, 106, 28, .1);
+  --vino: #7a2434;
+
+  --ok: #2c7048;
+  --ok-suave: rgba(44, 112, 72, .1);
+  --aviso: #a8560c;
+  --aviso-suave: rgba(168, 86, 12, .1);
+  --error: #b02a32;
+  --error-suave: rgba(176, 42, 50, .09);
+  --info: #295d9c;
+  --info-suave: rgba(41, 93, 156, .09);
+
+  --sombra-1: 0 1px 2px rgba(60, 40, 15, .08);
+  --sombra-2: 0 12px 30px -12px rgba(60, 40, 15, .28);
+  --sombra-acento: 0 8px 22px -8px rgba(156, 106, 28, .45);
+  --velo: rgba(30, 22, 14, .55);
+
+  color-scheme: light;
+}

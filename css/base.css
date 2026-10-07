@@ -1,0 +1,62 @@
+/* ==========================================================
+   Base: reset, tipografía y utilidades pequeñas
+   ========================================================== */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.45;
+  background: var(--fondo);
+  color: var(--tinta);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: lining-nums tabular-nums;
+  transition: background .2s, color .2s;
+}
+
+h1, h2, h3, .serif {
+  font-family: var(--serif);
+  font-weight: 600;
+  letter-spacing: .005em;
+  line-height: 1.15;
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+img { display: block; max-width: 100%; }
+
+:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+::selection { background: var(--acento); color: var(--acento-tinta); }
+
+/* Utilidades de texto */
+.t-sub { font-size: 12px; color: var(--tinta-suave); }
+.t-mini { font-size: 11px; color: var(--apagado); }
+.t-fuerte { font-weight: 700; }
+.t-ok { color: var(--ok); }
+.t-aviso { color: var(--aviso); }
+.t-error { color: var(--error); }
+.t-acento { color: var(--acento); }
+.recorta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Utilidades de disposición */
+.fila { display: flex; align-items: center; gap: 10px; }
+.fila.arriba { align-items: flex-start; }
+.fila.entre { justify-content: space-between; }
+.fila.envuelve { flex-wrap: wrap; }
+.fila.gap-s { gap: 6px; }
+.crece { flex: 1; min-width: 0; }
+.der { text-align: right; flex-shrink: 0; }
+.mt-s { margin-top: 8px; }
+.mt-m { margin-top: 12px; }
+.mb-s { margin-bottom: 8px; }
+.mb-m { margin-bottom: 12px; }
+.oculto { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
