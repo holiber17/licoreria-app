@@ -3,8 +3,18 @@
 // ==========================================================
 
 // ---- ICONOS DE CATEGORÍA ----
-const catIcon={'Ron':'🥃','Cerveza':'🍺','Whisky':'🥃','Vodka':'🍸','Anís':'🌿','Vino':'🍷','Champán':'🍾','Tequila':'🌵','Mezcladores':'🥤','Combos Especiales':'🎉','default':'🍶'};
+const catIcon={'Ron':'🥃','Cerveza':'🍺','Whisky':'🥃','Vodka':'🍸','Ginebra':'🍸','Anís':'🌿','Vino':'🍷','Champán':'🍾','Tequila':'🌵','Mezcladores':'🥤','Pasapalos':'🥜','Combos Especiales':'🎉','default':'🍶'};
 function getCatIcon(cat){return catIcon[cat]||catIcon['default'];}
+// Orden del menú: primero lo que más se pide; las demás categorías van
+// después en orden alfabético y "General" al final. Dentro, de menor a mayor precio.
+const ORDEN_CATEGORIAS=['Combos Especiales','Cerveza','Ron','Whisky','Vodka','Ginebra','Tequila','Anís','Vino','Champán','Mezcladores','Pasapalos'];
+function rangoCategoria(c){const i=ORDEN_CATEGORIAS.indexOf(c||'General');return i>=0?i:(c&&c!=='General'?ORDEN_CATEGORIAS.length:ORDEN_CATEGORIAS.length+1);}
+function ordenarMenu(lista){
+  return(lista||[]).slice().sort((a,b)=>rangoCategoria(a.categoria)-rangoCategoria(b.categoria)
+    ||String(a.categoria||'').localeCompare(String(b.categoria||''),'es')
+    ||(+a.precio_usd*(a.unidades_combo||1))-(+b.precio_usd*(b.unidades_combo||1))
+    ||a.nombre.localeCompare(b.nombre,'es'));
+}
 
 // Imagen del producto o, si falla o no hay, el icono de su categoría
 function prodImg(item,size='md'){

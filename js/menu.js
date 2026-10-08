@@ -4,7 +4,7 @@
 
 async function loadMenu(){
   if(!sucursalActual)return;
-  menuItems=await restGet('menu?select=*&sucursal_id=eq.'+sucursalActual.id+'&activo=eq.true&order=categoria');
+  menuItems=ordenarMenu(await restGet('menu?select=*&sucursal_id=eq.'+sucursalActual.id+'&activo=eq.true&order=categoria'));
 }
 
 function toggleMenuForm(){alternar('menu-form');}
