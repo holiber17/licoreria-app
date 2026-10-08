@@ -26,7 +26,7 @@ async function doRegister(){
   const{data,error}=await sb.auth.signUp({email,password:pass,options:{data:{nombre}}});
   if(error){showErr(error.message);return;}
   if(data.user){
-    await sb.from('perfiles').upsert({id:data.user.id,nombre,rol:'empleado',sucursal_id:null});
+    await sb.from('perfiles').upsert({id:data.user.id,nombre,rol:'empleado',sucursal_id:null},{onConflict:'id',ignoreDuplicates:true});
     showToast('Cuenta creada. Espera activación del dueño.');
     showLogin();
   }
@@ -81,7 +81,8 @@ async function refreshPerfilCache(u){
     const token=await getToken();
     const p = await supaFetch('perfiles?select=id,nombre,rol,sucursal_id&id=eq.'+u.id, token);
     if(!p){
-      await rest('perfiles',{method:'POST',prefer:'resolution=merge-duplicates',
+      // Solo crea el perfil si de verdad no existe; nunca pisa uno existente
+      await rest('perfiles',{method:'POST',prefer:'resolution=ignore-duplicates',
         body:{id:u.id,nombre:u.user_metadata?.nombre||u.email,rol:'empleado',sucursal_id:null}});
       showWaitScreen();return;
     }
@@ -93,6 +94,8 @@ async function refreshPerfilCache(u){
     if(!sucursalActual){await launchApp();}
   }catch(err){
     console.error('refreshPerfilCache error:',err);
+    // Sin caché no hay con qué entrar: volver al acceso en vez de quedar colgado
+    if(!sucursalActual)showAuthScreen();
   }
 }
 
