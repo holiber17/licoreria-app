@@ -1,0 +1,11 @@
+{
+  "name": "licorapp",
+  "private": true,
+  "description": "Punto de venta, inventario y reportes para licorerías y bodegones",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

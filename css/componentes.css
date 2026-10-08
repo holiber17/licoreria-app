@@ -30,11 +30,20 @@
 .btn.warning { background: var(--aviso-suave); color: var(--aviso); border-color: color-mix(in srgb, var(--aviso) 40%, transparent); }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--tinta-suave); }
 .btn.ghost:hover { background: var(--superficie-2); color: var(--tinta); }
+.btn.ghost.t-error { color: var(--error); }
 
 .btn.sm { padding: 6px 11px; font-size: 12.5px; border-radius: var(--radio-xs); }
 .btn.sm i { font-size: 14px; }
 .btn.ico { padding: 6px 8px; }
 .btn.full { width: 100%; }
+.btn:disabled { opacity: .55; cursor: default; transform: none; }
+.btn.cargando { position: relative; color: transparent !important; }
+.btn.cargando::after {
+  content: ""; position: absolute; width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid currentColor; border-color: var(--tinta) transparent var(--tinta) transparent;
+  animation: girar .7s linear infinite;
+}
+.btn.primary.cargando::after { border-color: var(--acento-tinta) transparent var(--acento-tinta) transparent; }
 .btn.grande { padding: 13px 18px; font-size: 15px; border-radius: var(--radio-m); }
 
 .icon-btn {

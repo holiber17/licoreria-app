@@ -15,10 +15,43 @@ const SOL_TIPOS={
   pagar:{icono:'ti-wallet',texto:'Quiere pagar'}
 };
 
+// Tiempo real: los avisos y los pedidos nuevos llegan al instante.
+// Respaldo: si el tiempo real no conecta, se consulta cada 15 s
+// (y cada 60 s aunque esté conectado, por si se perdió algún evento).
+let canalSucursal=null;
+let tiempoRealActivo=false;
+let vueltasSolicitudes=0;
+
 function iniciarSolicitudes(){
   if(solicitudesTimer)return;
   cargarSolicitudes();
-  solicitudesTimer=setInterval(cargarSolicitudes,15000);
+  iniciarTiempoReal();
+  solicitudesTimer=setInterval(()=>{
+    vueltasSolicitudes++;
+    if(!tiempoRealActivo||vueltasSolicitudes%4===0)cargarSolicitudes();
+  },15000);
+}
+
+function iniciarTiempoReal(){
+  if(!sucursalActual||!sb.channel)return;
+  if(canalSucursal){sb.removeChannel(canalSucursal);canalSucursal=null;tiempoRealActivo=false;}
+  const f='sucursal_id=eq.'+sucursalActual.id;
+  let tPedidos=null;
+  const refrescarPedidos=()=>{
+    clearTimeout(tPedidos);
+    tPedidos=setTimeout(()=>{if($('s-lista')?.classList.contains('active'))renderPedidos();},300);
+  };
+  try{
+    canalSucursal=sb.channel('sucursal-'+sucursalActual.id)
+      .on('postgres_changes',{event:'*',schema:'public',table:'solicitudes',filter:f},()=>cargarSolicitudes())
+      .on('postgres_changes',{event:'*',schema:'public',table:'pedidos',filter:f},refrescarPedidos)
+      .subscribe(estado=>{tiempoRealActivo=estado==='SUBSCRIBED';});
+  }catch(e){tiempoRealActivo=false;}
+}
+// Al cambiar de sucursal
+function reiniciarSolicitudes(){
+  solicitudes=[];solicitudesVistas=new Set();solicitudesPrimera=true;
+  renderSolicitudes();cargarSolicitudes();iniciarTiempoReal();
 }
 
 async function cargarSolicitudes(){
@@ -62,6 +95,7 @@ function renderSolicitudes(){
   if(n&&tab){
     const b=document.createElement('span');b.className='nav-badge';b.textContent=n;tab.appendChild(b);
   }
+  marcarAvisosEnTarjetas();
   if(!panel)return;
   if(!n){panel.style.display='none';return;}
   panel.style.display='block';
@@ -85,4 +119,18 @@ async function atenderSolicitud(id){
   solicitudes=solicitudes.filter(s=>s.id!==id);
   renderSolicitudes();
   feedback();
+}
+
+// Marca en la tarjeta de cada pedido si tiene un aviso pendiente
+function htmlAvisoTarjeta(pedidoId){
+  const tipos=[...new Set(solicitudes.filter(s=>s.pedido_id===pedidoId).map(s=>s.tipo))];
+  return tipos.map(t=>t==='pagar'
+    ?'<span class="aviso-tarjeta pagar"><i class="ti ti-wallet"></i> Quiere pagar</span>'
+    :'<span class="aviso-tarjeta"><i class="ti ti-bell-ringing"></i> Te llama</span>').join('');
+}
+function marcarAvisosEnTarjetas(){
+  document.querySelectorAll('.cli-card[data-pedido]').forEach(card=>{
+    const cont=card.querySelector('.avisos-tarjeta');
+    if(cont)cont.innerHTML=htmlAvisoTarjeta(card.dataset.pedido);
+  });
 }
