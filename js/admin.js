@@ -129,6 +129,7 @@ async function cambiarSucursal(id){
   $('sucursal-badge').textContent=nombre;
   showToast('Sucursal: '+nombre);
   await loadMenu();renderPedidos();renderSucursales();
+  reiniciarSolicitudes();
 }
 
 // ---- USUARIOS ----

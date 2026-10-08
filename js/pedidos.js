@@ -95,6 +95,7 @@ function switchGNav(sec){
     if(c)c.classList.toggle('active',s===sec);
   });
   $('gnav-'+sec)?.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});
+  ajustarBarraTasas();
   if(sec==='menu'){loadMenu().then(renderMenu);}
   if(sec==='caja')renderCaja();
   if(sec==='admin')loadAdmin();
@@ -103,7 +104,13 @@ function switchGNav(sec){
   if(sec==='clientes'){loadClientes();}
 }
 function goLista(){showScr('s-lista');renderPedidos();}
-function showScr(id){document.querySelectorAll('#sec-pedidos .scr').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');}
+function showScr(id){document.querySelectorAll('#sec-pedidos .scr').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');ajustarBarraTasas();}
+// Dentro de un pedido la barra de tasas se oculta (la tasa va en la cabecera)
+function ajustarBarraTasas(){
+  const enPedido=$('sec-pedidos')?.classList.contains('active')&&$('s-detalle')?.classList.contains('active');
+  document.querySelector('.content')?.classList.toggle('en-pedido',!!enPedido);
+  if($('det-tasa'))$('det-tasa').textContent='BCV '+tasa().toFixed(2);
+}
 function renderAll(){renderPedidos();if(pedidoActual){renderConsumo();renderCuenta();}renderMenu();renderCaja();}
 
 // ---- NUEVO PEDIDO ----
@@ -151,7 +158,8 @@ async function renderPedidos(){
   el.innerHTML='<div class="lista-pedidos">'+lista.map(p=>{
     const items=p.pedido_items||[];
     const total=items.reduce((s,i)=>s+(i.consumido*i.precio_usd),0);
-    return`<div class="cli-card activo" onclick="abrirPedido('${p.id}')">
+    return`<div class="cli-card activo" data-pedido="${p.id}" onclick="abrirPedido('${p.id}')">
+      <div class="avisos-tarjeta">${htmlAvisoTarjeta(p.id)}</div>
       <div class="fila">
         <div class="avatar sm">${ini(p.cliente_nombre)}</div>
         <span class="nombre recorta crece">${esc(p.cliente_nombre)}</span>
@@ -383,6 +391,11 @@ async function quitarItem(itemId){
   pedidoActual.pedido_items=(pedidoActual.pedido_items||[]).filter(i=>i.id!==itemId);
   renderConsumo();
 }
+// Categoría e imagen del producto del menú (los ítems del pedido no las guardan)
+function conCategoria(item){
+  const m=menuItems.find(x=>x.id===item.menu_id)||menuItems.find(x=>x.nombre.toLowerCase()===String(item.nombre).toLowerCase());
+  return m?{...item,categoria:m.categoria,imagen_url:item.imagen_url||m.imagen_url}:item;
+}
 function renderConsumo(){
   const el=$('consumo-list');
   if(!pedidoActual||(pedidoActual.pedido_items||[]).length===0){el.innerHTML='<div class="empty"><i class="ti ti-glass"></i>Sin productos todavía.<br>Toca <strong>Agregar</strong>.</div>';return;}
@@ -396,7 +409,7 @@ function renderConsumo(){
       ?`${restante>0?`quedan <strong>${restante}</strong> de ${item.total}`:'<strong>combo terminado</strong>'} · ${fmtPrice(item.precio_usd)} c/u`
       :`${fmtPrice(item.precio_usd)} c/u · <strong>${fmtUSD(item.consumido*item.precio_usd)}</strong>`;
     return`<div class="item-row">
-      ${prodImg(item,'sm')}
+      ${prodImg(conCategoria(item),'sm')}
       <div class="ii"><div class="in">${esc(item.nombre)}</div>
         <div class="is">${sub}</div>
         ${esCombo?`<div class="prog-bar"><div class="prog-fill ${fc}" style="width:${pct}%"></div></div>`:''}

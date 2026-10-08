@@ -155,10 +155,9 @@
           <div id="det-avatar" class="avatar"></div>
           <div class="crece">
             <div id="det-nombre" class="det-nombre recorta"></div>
-            <div class="t-sub">Pedido abierto</div>
+            <div class="t-sub">Pedido abierto · <span id="det-tasa"></span></div>
           </div>
-          <button class="icon-btn" onclick="mostrarQR()" title="Compartir QR con el cliente"><i class="ti ti-qrcode"></i></button>
-          <button class="icon-btn" onclick="cancelarPedido()" title="Cancelar sin cobrar"><i class="ti ti-x"></i></button>
+          <button class="btn sm" onclick="mostrarQR()" title="Compartir QR con el cliente"><i class="ti ti-qrcode"></i> QR</button>
         </div>
 
         <div class="itabs">
@@ -197,6 +196,7 @@
           </div>
           <button class="btn primary full grande" onclick="abrirCobro()"><i class="ti ti-cash"></i> Cobrar cuenta</button>
           <button class="btn full mt-s" onclick="generarPDFCuenta()"><i class="ti ti-file-text"></i> Exportar cuenta como PDF</button>
+          <button class="btn ghost full mt-m t-error" onclick="cancelarPedido()"><i class="ti ti-x"></i> Cancelar pedido sin cobrar</button>
         </div>
       </div>
     </section>

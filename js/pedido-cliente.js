@@ -8,6 +8,10 @@ let pedidoCache=null;
 let sucursal=null;
 let partes=1;
 let metodoElegido='';
+let catalogo={};           // menu_id / nombre -> {categoria, imagen_url}
+let avisos=[];             // avisos de este pedido (últimas 12 h)
+let estadoAvisoAnterior={};
+let tiempoReal=false;
 
 // ---- DATOS DEL NEGOCIO ----
 async function cargarNegocio(sucursalId){
@@ -19,6 +23,13 @@ async function cargarNegocio(sucursalId){
   if(!d||!d[0])return;
   sucursal=d[0];
   pintarNegocio(sucursal);
+  // Categoría e imagen de cada producto, para mostrar su ícono
+  const menu=await anonGet('menu?select=id,nombre,categoria,imagen_url&sucursal_id=eq.'+id);
+  (menu||[]).forEach(m=>{catalogo[m.id]=m;catalogo['n:'+m.nombre.toLowerCase()]=m;});
+}
+function conCatalogo(item){
+  const m=catalogo[item.menu_id]||catalogo['n:'+String(item.nombre||'').toLowerCase()];
+  return m?{...item,categoria:m.categoria,imagen_url:item.imagen_url||m.imagen_url}:item;
 }
 
 // Métodos de pago que el negocio configuró, más efectivo
@@ -49,6 +60,8 @@ async function loadPedido(){
   if(!pedido){content.innerHTML=vacio('ti-receipt-off','Pedido no encontrado.');return;}
   pedidoCache=pedido;
   await cargarNegocio(pedido.sucursal_id);
+  avisos=await anonGet('solicitudes?select=id,tipo,estado,created_at,atendida_at&pedido_id=eq.'+encodeURIComponent(pedidoId)+'&order=created_at.desc&limit=10')||[];
+  avisarSiAtendieron();
   renderPedido(pedido);
   checkNotifCliente(pedido.pedido_items||[]);
   if(document.getElementById('hoja-pago').classList.contains('open'))renderPago();
@@ -87,6 +100,8 @@ function renderPedido(pedido){
     <div class="total-bs">${fmtBs(totalUSD,tasaPedido)}</div>
   </div>`;
 
+  if(abierto)html+=htmlEstadoAvisos();
+
   if(abierto){
     html+=`<div class="acciones-cliente">
       <button class="btn grande" id="btn-mesonero" onclick="llamarMesonero()"><i class="ti ti-bell-ringing"></i> Llamar al mesonero</button>
@@ -101,12 +116,12 @@ function renderPedido(pedido){
     html+=items.map(item=>{
       const esCombo=item.tipo==='combo';
       const restante=item.total-item.consumido;
-      const pct=Math.round((item.consumido/item.total)*100);
+      const pct=item.total>0?Math.round((item.consumido/item.total)*100):0;
       const fc=pct>=100?'full':pct>=70?'warn':'';
       const rbClass=pct>=100?'rb-full':pct>=70?'rb-warn':'rb-ok';
       const sub=item.consumido*item.precio_usd;
       return`<div class="item-row">
-        ${imgProducto(item,'prod-img-sm','cat-icon-sm')}
+        ${imgProducto(conCatalogo(item),'prod-img-sm','cat-icon-sm')}
         <div class="item-info">
           <div class="item-name">${esc(item.nombre)}</div>
           <div class="item-sub">${esCombo
@@ -133,6 +148,48 @@ function renderPedido(pedido){
   actualizarEspera();
 }
 
+// ---- ESTADO DE LOS AVISOS ("Ya vienen") ----
+function ultimoAviso(tipo){return avisos.find(a=>a.tipo===tipo);}
+function minutosDesde(f){return Math.max(0,Math.round((Date.now()-new Date(f))/60000));}
+function htmlEstadoAvisos(){
+  const filas=[];
+  const m=ultimoAviso('mesonero'), p=ultimoAviso('pagar');
+  if(m&&m.estado==='pendiente')filas.push(['espera','ti-bell-ringing',`Le avisamos al mesonero${minutosDesde(m.created_at)?` · hace ${minutosDesde(m.created_at)} min`:''}`]);
+  else if(m&&m.estado==='atendida'&&minutosDesde(m.atendida_at||m.created_at)<10)filas.push(['ok','ti-walk','¡Ya vienen! El mesonero vio tu llamado']);
+  if(p&&p.estado==='pendiente')filas.push(['espera','ti-wallet','Avisaste que vas a pagar · un mesonero viene a confirmar']);
+  else if(p&&p.estado==='atendida'&&minutosDesde(p.atendida_at||p.created_at)<15)filas.push(['ok','ti-circle-check','Un mesonero viene a confirmar tu pago']);
+  return filas.map(([c,i,t])=>`<div class="estado-aviso ${c}"><i class="ti ${i}"></i><span>${t}</span></div>`).join('');
+}
+// Cuando un aviso pasa de pendiente a atendido, avisar al cliente
+function avisarSiAtendieron(){
+  avisos.forEach(a=>{
+    const antes=estadoAvisoAnterior[a.id];
+    if(antes==='pendiente'&&a.estado==='atendida'){
+      if(navigator.vibrate)navigator.vibrate([80,40,80]);
+      aviso('ti-walk',a.tipo==='pagar'?'Un mesonero viene a confirmar tu pago':'¡Ya vienen!');
+    }
+    estadoAvisoAnterior[a.id]=a.estado;
+  });
+}
+
+// ---- TIEMPO REAL ----
+// Si el tiempo real de Supabase está disponible, la página se actualiza
+// al instante; si no, sigue consultando cada 10 segundos.
+function iniciarTiempoReal(){
+  if(!window.supabase||!pedidoId)return;
+  try{
+    const cli=window.supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+    let t=null;
+    const refrescar=()=>{clearTimeout(t);t=setTimeout(loadPedido,250);};
+    const f='pedido_id=eq.'+pedidoId;
+    cli.channel('pedido-'+pedidoId)
+      .on('postgres_changes',{event:'*',schema:'public',table:'pedido_items',filter:f},refrescar)
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'pedidos',filter:'id=eq.'+pedidoId},refrescar)
+      .on('postgres_changes',{event:'*',schema:'public',table:'solicitudes',filter:f},refrescar)
+      .subscribe(estado=>{tiempoReal=estado==='SUBSCRIBED';});
+  }catch(e){tiempoReal=false;}
+}
+
 // ---- SOLICITUDES AL PERSONAL ----
 const ESPERA_MS=60*1000;
 function claveEspera(tipo){return'sol_'+pedidoId+'_'+tipo;}
@@ -142,7 +199,8 @@ function enEspera(tipo){
 function actualizarEspera(){
   const b=document.getElementById('btn-mesonero');
   if(!b)return;
-  if(enEspera('mesonero')){b.disabled=true;b.innerHTML='<i class="ti ti-check"></i> Ya le avisamos';}
+  const pendiente=ultimoAviso('mesonero')?.estado==='pendiente';
+  if(enEspera('mesonero')||pendiente){b.disabled=true;b.innerHTML='<i class="ti ti-check"></i> Ya le avisamos';}
 }
 
 async function enviarSolicitud(tipo,metodo){
@@ -156,17 +214,19 @@ async function enviarSolicitud(tipo,metodo){
 }
 
 async function llamarMesonero(){
+  pedirPermiso();
   const b=document.getElementById('btn-mesonero');
   if(b)b.disabled=true;
   if(await enviarSolicitud('mesonero')){
-    aviso('ti-bell-ringing','¡Listo! Un mesonero viene en camino.');
-    actualizarEspera();
+    aviso('ti-bell-ringing','¡Listo! Le avisamos al mesonero.');
+    loadPedido();
     setTimeout(()=>{const x=document.getElementById('btn-mesonero');if(x){x.disabled=false;x.innerHTML='<i class="ti ti-bell-ringing"></i> Llamar al mesonero';}},ESPERA_MS);
   } else if(b&&!enEspera('mesonero')) b.disabled=false;
 }
 
 // ---- HOJA DE PAGO ----
 function abrirPago(){
+  pedirPermiso();
   partes=1;
   const disp=metodosDisponibles();
   metodoElegido=disp.length===1?disp[0].clave:(disp.find(m=>m.clave!=='efectivo')?.clave||'efectivo');
@@ -232,6 +292,7 @@ async function avisarPago(){
   if(await enviarSolicitud('pagar',detalle)){
     b.innerHTML='<i class="ti ti-check"></i> Ya avisamos al personal';
     aviso('ti-wallet','¡Listo! Ya le avisamos al personal.<br>En un momento confirman tu pago.');
+    loadPedido();
   } else if(!enEspera('pagar')) b.disabled=false;
 }
 
@@ -241,7 +302,7 @@ let notificadosYa = new Set(JSON.parse(sessionStorage.getItem('notif_'+pedidoId)
 function saveNotif(){sessionStorage.setItem('notif_'+pedidoId,JSON.stringify([...notificadosYa]));}
 
 async function pedirPermiso(){
-  if(!('Notification' in window))return;
+  if(!('Notification' in window)||notifPermiso)return;
   if(Notification.permission==='granted'){notifPermiso=true;return;}
   if(Notification.permission!=='denied'){
     const p = await Notification.requestPermission();
@@ -292,12 +353,16 @@ function checkNotifCliente(items){
 // Cerrar la hoja tocando el fondo
 document.getElementById('hoja-pago').addEventListener('click',e=>{if(e.target.id==='hoja-pago')cerrarPago();});
 
-// Iniciar
-pedirPermiso();
+// Iniciar (el permiso de notificaciones se pide al tocar un botón, no al abrir)
+if('Notification' in window&&Notification.permission==='granted')notifPermiso=true;
 fetchTasas().then(loadPedido);
+iniciarTiempoReal();
 
-// Actualizar cada 10 segundos
+// Respaldo: cada 10 s sin tiempo real; cada 60 s con tiempo real (tasa y borrados)
+let vueltas=0;
 setInterval(async()=>{
+  vueltas++;
+  if(tiempoReal&&vueltas%6!==0)return;
   await fetchTasas();
   await loadPedido();
 }, 10000);

@@ -364,6 +364,17 @@ body.app-body::before {
 .brand-preview img { width: 84px; height: 84px; margin: 0 auto; border-radius: 18px; object-fit: cover; border: 1px solid var(--linea-fuerte); }
 .brand-preview div { font-family: var(--serif); font-size: 20px; font-weight: 700; margin-top: 8px; }
 
+/* Dentro de un pedido la barra de tasas no hace falta */
+.content.en-pedido > .tbar { display: none; }
+.avisos-tarjeta { display: flex; flex-wrap: wrap; gap: 4px; }
+.avisos-tarjeta:not(:empty) { margin-bottom: 8px; }
+.aviso-tarjeta {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: var(--radio-pill);
+  font-size: 11px; font-weight: 800; background: var(--aviso-suave); color: var(--aviso);
+  animation: latir 1.6s ease-in-out infinite;
+}
+.aviso-tarjeta.pagar { background: var(--ok-suave); color: var(--ok); }
+
 /* ---------- Avisos de clientes ---------- */
 .nav-tab { position: relative; }
 .nav-badge {
