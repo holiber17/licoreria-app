@@ -38,7 +38,7 @@ function generarPDFCuenta(){
       <div class="bs">${fmtBsCon(total,tasaActual)}</div>
     </div>
   </div>
-  <div class="pdf-footer">Método de pago: ${esc(metodoPago)} · Tasa BCV: ${tasaActual.toFixed(2)} Bs/$<br>Gracias por su preferencia</div>`;
+  <div class="pdf-footer">Método de pago: ${esc(metodoPago||'por definir')} · Tasa BCV: ${tasaActual.toFixed(2)} Bs/$<br>Gracias por su preferencia</div>`;
 
   $('pdf-content-cuenta').innerHTML=html;
   abrirModal('pdf-modal-cuenta');

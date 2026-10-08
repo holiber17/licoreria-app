@@ -149,7 +149,7 @@
       <div id="s-detalle" class="scr">
         <div class="top-bar">
           <button class="btn sm ghost" onclick="goLista()"><i class="ti ti-arrow-left"></i> Volver</button>
-          <button class="btn sm primary" data-accion="cobrar" onclick="cobrarPedido(this)"><i class="ti ti-cash"></i> Cobrar</button>
+          <button class="btn sm primary" onclick="abrirCobro()"><i class="ti ti-cash"></i> Cobrar</button>
         </div>
         <div class="det-cab">
           <div id="det-avatar" class="avatar"></div>
@@ -170,6 +170,10 @@
         <div id="mt-agregar" style="display:none">
           <input class="sbar" id="menu-search" placeholder="Buscar producto..." oninput="renderMenuPicks()">
           <div id="menu-picks"></div>
+          <div id="barra-agregar" class="barra-agregar" style="display:none">
+            <button class="btn ghost" onclick="limpiarSeleccion()">Limpiar</button>
+            <button class="btn primary crece" id="barra-agregar-btn" onclick="confirmarAgregar(this)"></button>
+          </div>
           <div class="mb-m"><button class="btn sm" onclick="toggleCustom()"><i class="ti ti-pencil"></i> Producto personalizado</button></div>
           <div id="custom-form" style="display:none" class="af">
             <div class="fg"><label for="tipo-item">Tipo</label>
@@ -191,20 +195,7 @@
             <div id="cuenta-list"></div>
             <div class="total-row"><span>Total</span><div id="cuenta-total"></div></div>
           </div>
-          <div class="af">
-            <div class="fg"><label>Método de pago</label>
-              <div class="metodos">
-                <button class="metodo-btn active" id="mp-Efectivo" onclick="selMetodo('Efectivo')"><i class="ti ti-cash"></i> Efectivo</button>
-                <button class="metodo-btn" id="mp-Zelle" onclick="selMetodo('Zelle')"><i class="ti ti-building-bank"></i> Zelle</button>
-                <button class="metodo-btn" id="mp-Pago móvil" onclick="selMetodo('Pago móvil')"><i class="ti ti-device-mobile"></i> Pago móvil</button>
-                <button class="metodo-btn" id="mp-Transferencia" onclick="selMetodo('Transferencia')"><i class="ti ti-arrows-exchange"></i> Transferencia</button>
-              </div>
-            </div>
-            <div class="fg" style="margin-bottom:0"><label for="nota-cobro">Nota (opcional)</label>
-              <input id="nota-cobro" placeholder="Ej: Pagó con billete de $20...">
-            </div>
-          </div>
-          <button class="btn primary full grande" data-accion="cobrar" onclick="cobrarPedido(this)"><i class="ti ti-cash"></i> Registrar cobro y cerrar</button>
+          <button class="btn primary full grande" onclick="abrirCobro()"><i class="ti ti-cash"></i> Cobrar cuenta</button>
           <button class="btn full mt-s" onclick="generarPDFCuenta()"><i class="ti ti-file-text"></i> Exportar cuenta como PDF</button>
         </div>
       </div>
@@ -489,6 +480,32 @@
 </div>
 
 <!-- ==================== MODALES ==================== -->
+
+<div id="hoja-cobro" class="modal">
+  <div class="hoja">
+    <div class="hoja-cab">
+      <span class="hoja-titulo">Cobrar cuenta</span>
+      <button class="icon-btn" onclick="cerrarCobro()" aria-label="Cerrar"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="cobro-total">
+      <div class="t-mini" id="cobro-cliente"></div>
+      <div class="cobro-usd" id="cobro-usd"></div>
+      <div class="t-sub" id="cobro-bs"></div>
+    </div>
+    <div class="fg"><label>¿Cómo pagó?</label>
+      <div class="metodos">
+        <button class="metodo-btn" id="mp-Efectivo" onclick="selMetodo('Efectivo')"><i class="ti ti-cash"></i> Efectivo</button>
+        <button class="metodo-btn" id="mp-Pago móvil" onclick="selMetodo('Pago móvil')"><i class="ti ti-device-mobile"></i> Pago móvil</button>
+        <button class="metodo-btn" id="mp-Zelle" onclick="selMetodo('Zelle')"><i class="ti ti-building-bank"></i> Zelle</button>
+        <button class="metodo-btn" id="mp-Transferencia" onclick="selMetodo('Transferencia')"><i class="ti ti-arrows-exchange"></i> Transferencia</button>
+      </div>
+    </div>
+    <div class="fg"><label for="nota-cobro">Nota (opcional)</label>
+      <input id="nota-cobro" placeholder="Ej: Pagó con billete de $20...">
+    </div>
+    <button class="btn primary full grande" id="btn-confirmar-cobro" data-accion="cobrar" onclick="cobrarPedido(this)" disabled>Elige cómo pagó</button>
+  </div>
+</div>
 
 <div id="qr-modal" class="modal centro">
   <div class="hoja">

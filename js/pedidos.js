@@ -163,6 +163,7 @@ async function renderPedidos(){
 }
 
 async function abrirPedido(id){
+  seleccion.clear();
   const{data}=await sb.from('pedidos').select('*,pedido_items(*)').eq('id',id).single();
   pedidoActual=data;
   $('det-nombre').textContent=data.cliente_nombre;
@@ -176,30 +177,43 @@ async function cancelarPedido(){
   await sb.from('pedidos').update({estado:'cancelado'}).eq('id',pedidoActual.id);
   pedidoActual=null;goLista();
 }
+// ---- COBRO ----
+// Hoja de cobro: hay que elegir el método de pago antes de confirmar.
 // El cobro ocurre entero dentro de Supabase (función cobrar_pedido):
 // cierra el pedido, registra en caja y descuenta el stock en una sola
 // operación. Si se toca dos veces, la segunda falla con "ya fue cobrado".
-async function cobrarPedido(boton){
-  if(!pedidoActual||accionesEnCurso.has('cobrar'))return;
+function abrirCobro(){
+  if(!pedidoActual)return;
   const items=(pedidoActual.pedido_items||[]).filter(i=>i.consumido>0);
-  if(!items.length){alert('No hay nada consumido aún.');return;}
+  if(!items.length){showToast('No hay nada servido para cobrar','danger');return;}
+  const total=items.reduce((s,i)=>s+(i.consumido*i.precio_usd),0);
+  $('cobro-cliente').textContent=pedidoActual.cliente_nombre;
+  $('cobro-usd').textContent=fmtUSD(total);
+  $('cobro-bs').textContent=fmtBs(total)+(tasaEur()?' · '+fmtEUR(total):'');
+  $('nota-cobro').value='';
+  selMetodo('');
+  abrirModal('hoja-cobro');
+}
+function cerrarCobro(){cerrarModal('hoja-cobro');}
+
+async function cobrarPedido(boton){
+  if(!pedidoActual||!metodoPago||accionesEnCurso.has('cobrar'))return;
+  const items=(pedidoActual.pedido_items||[]).filter(i=>i.consumido>0);
   const total=items.reduce((s,i)=>s+(i.consumido*i.precio_usd),0);
   const nota=$('nota-cobro').value.trim();
-  if(!confirm(`¿Cobrar ${fmtUSD(total)} (${fmtBs(total)}) a ${pedidoActual.cliente_nombre}?`))return;
-  const botones=[...document.querySelectorAll('[data-accion="cobrar"]')];
-  botones.forEach(b=>{b.disabled=true;b.classList.add('cargando');});
-  await enCurso('cobrar',null,async()=>{
+  await enCurso('cobrar',boton,async()=>{
     const{data,error}=await sb.rpc('cobrar_pedido',{p_pedido:pedidoActual.id,p_metodo:metodoPago,p_nota:nota,p_tasa:tasa()});
     if(error){
       showToast(msgError(error,'No se pudo cobrar. Intenta de nuevo.'),'danger');
       // Si ya estaba cobrado (p. ej. desde otro teléfono), volver a la lista
-      if(/ya fue cobrado/i.test(error.message||'')){pedidoActual=null;goLista();}
+      if(/ya fue cobrado/i.test(error.message||'')){cerrarCobro();pedidoActual=null;goLista();}
       return;
     }
-    sonidoCaja();showToast(`Cobrado ${fmtUSD(data?.total_usd??total)} ✓`);
+    cerrarCobro();
+    sonidoCaja();showToast(`Cobrado ${fmtUSD(data?.total_usd??total)} · ${metodoPago} ✓`);
     pedidoActual=null;goLista();switchGNav('caja');
     if(invItems.length)loadInventario();
-  }).finally(()=>botones.forEach(b=>{b.disabled=false;b.classList.remove('cargando');}));
+  });
 }
 
 // ---- QR ----
@@ -221,37 +235,90 @@ function switchTab(tab){
 }
 
 // ---- AGREGAR AL PEDIDO ----
+// Cada toque en un producto suma 1 a la selección; la barra de abajo
+// agrega todo de una vez (función agregar_al_pedido en Supabase).
+const seleccion=new Map(); // menu_id -> cantidad
+
+function totalSeleccion(){
+  let n=0,usd=0;
+  seleccion.forEach((c,id)=>{
+    const m=menuItems.find(x=>x.id===id);if(!m)return;
+    n+=c;usd+=c*m.precio_usd*(m.tipo==='combo'?m.unidades_combo:1);
+  });
+  return{n,usd};
+}
+function renderBarraAgregar(){
+  const{n,usd}=totalSeleccion();
+  const barra=$('barra-agregar');
+  if(!n){barra.style.display='none';return;}
+  barra.style.display='flex';
+  $('barra-agregar-btn').innerHTML=`<i class="ti ti-check"></i> Agregar ${n} · ${fmtUSD(usd)}`;
+}
+function tocarProducto(menuId,delta){
+  const c=Math.max(0,(seleccion.get(menuId)||0)+delta);
+  if(c)seleccion.set(menuId,c);else seleccion.delete(menuId);
+  vibrate();
+  const card=document.querySelector(`.menu-grid-item[data-id="${menuId}"]`);
+  if(card)card.outerHTML=tarjetaProducto(menuItems.find(m=>m.id===menuId));
+  renderBarraAgregar();
+}
+function limpiarSeleccion(){seleccion.clear();renderMenuPicks();}
+
+function tarjetaProducto(m){
+  const c=seleccion.get(m.id)||0;
+  return`<div class="menu-grid-item${c?' seleccionado':''}" data-id="${m.id}" onclick="tocarProducto('${m.id}',1)">
+      ${c?`<span class="mgi-cant">${c}</span><button class="mgi-menos" onclick="event.stopPropagation();tocarProducto('${m.id}',-1)" aria-label="Quitar uno">−</button>`:''}
+      ${prodImg(m,'grid')}
+      <div class="mgi-name">${esc(m.nombre)}</div>
+      <div class="mgi-price">${m.tipo==='combo'?fmtPrice(m.precio_usd*m.unidades_combo)+' el combo':fmtPrice(m.precio_usd)}</div>
+      <span class="pill ${m.tipo}">${m.tipo==='combo'?`Combo ${m.unidades_combo} ${esc(m.unidad)}s`:esc(m.unidad)}</span>
+    </div>`;
+}
+
 function renderMenuPicks(){
   const el=$('menu-picks');
-  if(!menuItems.length){el.innerHTML='<div class="empty"><i class="ti ti-bottle"></i>Menú vacío.</div>';return;}
+  if(!menuItems.length){el.innerHTML='<div class="empty"><i class="ti ti-bottle"></i>Menú vacío.</div>';renderBarraAgregar();return;}
   const q=($('menu-search')?.value||'').toLowerCase();
   const filtrado=menuItems.filter(m=>m.nombre.toLowerCase().includes(q)||m.categoria?.toLowerCase().includes(q));
   const cats=[...new Set(filtrado.map(m=>m.categoria||'General'))];
-  let html='';
-  cats.forEach(cat=>{
-    const items=filtrado.filter(m=>(m.categoria||'General')===cat);
-    html+=`<div class="slabel">${getCatIcon(cat)} ${esc(cat)}</div><div class="menu-grid">`;
-    html+=items.map(m=>`<div class="menu-grid-item" onclick="agregarDesdeMenu('${m.id}')">
-      ${prodImg(m,'grid')}
-      <div class="mgi-name">${esc(m.nombre)}</div>
-      <div class="mgi-price">${fmtPrice(m.precio_usd)} c/u</div>
-      <span class="pill ${m.tipo}">${m.tipo==='combo'?`${m.unidades_combo} ${esc(m.unidad)}s`:'Suelta'}</span>
-    </div>`).join('');
-    html+='</div>';
-  });
-  el.innerHTML=html||'<div class="empty"><i class="ti ti-search"></i>Sin resultados.</div>';
+  el.innerHTML=cats.map(cat=>`<div class="slabel">${getCatIcon(cat)} ${esc(cat)}</div><div class="menu-grid">${
+    filtrado.filter(m=>(m.categoria||'General')===cat).map(tarjetaProducto).join('')}</div>`).join('')
+    ||'<div class="empty"><i class="ti ti-search"></i>Sin resultados.</div>';
+  renderBarraAgregar();
 }
-async function agregarDesdeMenu(menuId){
-  const prod=menuItems.find(m=>m.id===menuId);if(!prod)return;
-  let cant=1;
-  if(prod.tipo==='suelto'){const inp=prompt(`¿Cuántas ${prod.unidad}s de "${prod.nombre}"?`,'1');if(inp===null)return;cant=parseInt(inp)||1;if(cant<1)return;}
-  const item={pedido_id:pedidoActual.id,menu_id:prod.id,nombre:prod.nombre,tipo:prod.tipo,total:prod.tipo==='combo'?prod.unidades_combo:cant,consumido:0,precio_usd:prod.precio_usd,unidad:prod.unidad};
-  await enCurso('agregar-'+menuId,null,async()=>{
-    const{data,error}=await sb.from('pedido_items').insert(item).select().single();
+
+// Mezcla las filas devueltas por la base con las del pedido en pantalla
+function aplicarItems(filas){
+  if(!pedidoActual.pedido_items)pedidoActual.pedido_items=[];
+  (filas||[]).forEach(f=>{
+    const i=pedidoActual.pedido_items.findIndex(x=>x.id===f.id);
+    if(i>=0)pedidoActual.pedido_items[i]=f;else pedidoActual.pedido_items.push(f);
+  });
+}
+async function confirmarAgregar(boton){
+  if(!pedidoActual||!seleccion.size)return;
+  const items=[...seleccion].map(([menu_id,cantidad])=>({menu_id,cantidad}));
+  const{n}=totalSeleccion();
+  await enCurso('agregar',boton,async()=>{
+    const{data,error}=await sb.rpc('agregar_al_pedido',{p_pedido:pedidoActual.id,p_items:items});
     if(error){showToast(msgError(error,'No se pudo agregar'),'danger');return;}
-    if(!pedidoActual.pedido_items)pedidoActual.pedido_items=[];
-    pedidoActual.pedido_items.push(data);
-    feedback();switchTab('consumo');
+    aplicarItems(data);
+    seleccion.clear();
+    feedback();showToast(`${n} ${plural(n,'producto')} ${plural(n,'agregado')} ✓`);
+    $('menu-search').value='';
+    switchTab('consumo');
+  });
+}
+// Otro combo igual, sumado a la misma línea
+async function otroCombo(itemId,boton){
+  const item=(pedidoActual.pedido_items||[]).find(i=>i.id===itemId);
+  if(!item)return;
+  if(!item.menu_id){return reabastecer(itemId);}
+  await enCurso('combo-'+itemId,boton,async()=>{
+    const{data,error}=await sb.rpc('agregar_al_pedido',{p_pedido:pedidoActual.id,p_items:[{menu_id:item.menu_id,cantidad:1}]});
+    if(error){showToast(msgError(error,'No se pudo agregar'),'danger');return;}
+    aplicarItems(data);feedback();renderConsumo();
+    showToast(`Otro ${item.nombre} agregado ✓`);
   });
 }
 function toggleCustom(){alternar('custom-form');}
@@ -263,21 +330,36 @@ async function agregarItemCustom(){
   const unidad=$('item-unidad').value.trim()||'und';
   if(!nombre){alert('Escribe el nombre');return;}
   const total=tipo==='combo'?parseInt($('item-total').value)||1:parseInt($('item-cant').value)||1;
-  const{data}=await sb.from('pedido_items').insert({pedido_id:pedidoActual.id,nombre,tipo,total,consumido:0,precio_usd,unidad}).select().single();
-  if(!pedidoActual.pedido_items)pedidoActual.pedido_items=[];
-  pedidoActual.pedido_items.push(data);
+  // Lo suelto se lleva de una vez: cuenta como servido al agregarlo
+  const{data,error}=await sb.from('pedido_items').insert({pedido_id:pedidoActual.id,nombre,tipo,total,consumido:tipo==='combo'?0:total,precio_usd,unidad}).select().single();
+  if(error){showToast(msgError(error,'No se pudo agregar'),'danger');return;}
+  aplicarItems([data]);
   ['item-nombre','item-total','item-cant','item-precio','item-unidad'].forEach(id=>{const el=$(id);if(el)el.value='';});
   mostrar('custom-form',false);
   feedback();switchTab('consumo');
 }
 
 // ---- CONSUMO ----
+// El número siempre es lo SERVIDO. Combo: + sirve una unidad del combo.
+// Suelto: + suma otro a la cuenta; − resta uno (en 0 se quita la línea).
 async function consumir(itemId,delta){
   const item=(pedidoActual.pedido_items||[]).find(i=>i.id===itemId);if(!item)return;
-  const n=item.consumido+delta;if(n<0||n>item.total)return;
-  item.consumido=n;
-  await sb.from('pedido_items').update({consumido:n}).eq('id',itemId);
-  feedback();renderConsumo();checkNotificaciones();
+  const n=item.consumido+delta;
+  if(item.tipo==='combo'){
+    if(n<0||n>item.total)return;
+    item.consumido=n;
+    renderConsumo();feedback();checkNotificaciones();
+    const{error}=await sb.from('pedido_items').update({consumido:n}).eq('id',itemId);
+    if(error){item.consumido-=delta;renderConsumo();showToast(msgError(error,'No se guardó el cambio'),'danger');}
+    return;
+  }
+  if(n<0)return;
+  if(n===0){return quitarItem(itemId);}
+  const antes={consumido:item.consumido,total:item.total};
+  item.consumido=n;item.total=n;
+  renderConsumo();feedback();
+  const{error}=await sb.from('pedido_items').update({consumido:n,total:n}).eq('id',itemId);
+  if(error){Object.assign(item,antes);renderConsumo();showToast(msgError(error,'No se guardó el cambio'),'danger');}
 }
 async function reabastecer(itemId){
   const item=(pedidoActual.pedido_items||[]).find(i=>i.id===itemId);
@@ -294,31 +376,37 @@ async function reabastecer(itemId){
   showToast(`+${agregar} unidades agregadas a ${item.nombre} ✓`);
 }
 async function quitarItem(itemId){
-  await sb.from('pedido_items').delete().eq('id',itemId);
+  const item=(pedidoActual.pedido_items||[]).find(i=>i.id===itemId);
+  if(item&&item.tipo==='combo'&&item.consumido>0&&!confirm(`¿Quitar "${item.nombre}" de la cuenta? Ya se sirvieron ${item.consumido}.`))return;
+  const{error}=await sb.from('pedido_items').delete().eq('id',itemId);
+  if(error){showToast(msgError(error,'No se pudo quitar'),'danger');return;}
   pedidoActual.pedido_items=(pedidoActual.pedido_items||[]).filter(i=>i.id!==itemId);
   renderConsumo();
 }
 function renderConsumo(){
   const el=$('consumo-list');
-  if(!pedidoActual||(pedidoActual.pedido_items||[]).length===0){el.innerHTML='<div class="empty"><i class="ti ti-glass"></i>Sin ítems todavía.<br>Ve a <strong>Agregar</strong>.</div>';return;}
+  if(!pedidoActual||(pedidoActual.pedido_items||[]).length===0){el.innerHTML='<div class="empty"><i class="ti ti-glass"></i>Sin productos todavía.<br>Toca <strong>Agregar</strong>.</div>';return;}
   el.innerHTML=(pedidoActual.pedido_items||[]).map(item=>{
-    const restante=item.total-item.consumido;
-    const pct=Math.round((item.consumido/item.total)*100);
-    const fc=pct>=100?'full':pct>=70?'warn':'';
     const esCombo=item.tipo==='combo';
-    const sub=esCombo?`<strong>${restante}</strong> de ${item.total} ${esc(item.unidad)}s restantes`:`${item.consumido} de ${item.total} pedida${item.total>1?'s':''}`;
+    const restante=item.total-item.consumido;
+    const pct=item.total>0?Math.round((item.consumido/item.total)*100):0;
+    const fc=pct>=100?'full':pct>=70?'warn':'acento';
+    const lleno=esCombo&&restante<=0;
+    const sub=esCombo
+      ?`${restante>0?`quedan <strong>${restante}</strong> de ${item.total}`:'<strong>combo terminado</strong>'} · ${fmtPrice(item.precio_usd)} c/u`
+      :`${fmtPrice(item.precio_usd)} c/u · <strong>${fmtUSD(item.consumido*item.precio_usd)}</strong>`;
     return`<div class="item-row">
       ${prodImg(item,'sm')}
       <div class="ii"><div class="in">${esc(item.nombre)}</div>
-        <div class="is">${sub}${item.precio_usd>0?' · '+fmtPrice(item.precio_usd)+' c/u':''}</div>
+        <div class="is">${sub}</div>
         ${esCombo?`<div class="prog-bar"><div class="prog-fill ${fc}" style="width:${pct}%"></div></div>`:''}
-        ${esCombo&&pct>=100?`<button class="btn sm success mt-s" onclick="reabastecer('${item.id}')"><i class="ti ti-refresh"></i> Reabastecer combo</button>`:''}
+        ${lleno?`<button class="btn sm success mt-s" onclick="otroCombo('${item.id}',this)"><i class="ti ti-plus"></i> Otro combo igual</button>`:''}
       </div>
       <div class="counter">
-        <button class="cbtn" onclick="consumir('${item.id}',-1)" aria-label="Restar">−</button>
-        <span class="cval">${esCombo?restante:item.consumido}</span>
-        <button class="cbtn mas" onclick="consumir('${item.id}',1)" aria-label="Sumar">+</button>
-        <button class="btn sm danger ico" onclick="quitarItem('${item.id}')" aria-label="Quitar"><i class="ti ti-trash"></i></button>
+        <button class="btn sm ghost ico" onclick="quitarItem('${item.id}')" aria-label="Quitar de la cuenta"><i class="ti ti-trash"></i></button>
+        <button class="cbtn" onclick="consumir('${item.id}',-1)" aria-label="Uno menos">−</button>
+        <span class="cval" title="Servidos">${item.consumido}</span>
+        <button class="cbtn mas" onclick="consumir('${item.id}',1)" aria-label="${esCombo?'Servir uno':'Uno más'}" ${lleno?'disabled':''}>+</button>
       </div>
     </div>`;
   }).join('');
@@ -334,8 +422,13 @@ function renderCuenta(){
 }
 
 // ---- MÉTODO DE PAGO ----
-let metodoPago = 'Efectivo';
+let metodoPago = '';
 function selMetodo(m){
   metodoPago=m;
   marcarActivo('mp-',['Efectivo','Zelle','Pago móvil','Transferencia'],m);
+  const b=$('btn-confirmar-cobro');
+  if(b){
+    b.disabled=!m;
+    b.innerHTML=m?`<i class="ti ti-check"></i> Cobrar ${$('cobro-usd').textContent} · ${m}`:'Elige cómo pagó';
+  }
 }
