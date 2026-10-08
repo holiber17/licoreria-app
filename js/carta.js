@@ -88,7 +88,7 @@ async function iniciarCarta(){
 
   if(menu===null){el.innerHTML=vacio('ti-wifi-off','No pudimos cargar la carta.<br>Intenta de nuevo en un momento.');return;}
   if(!menu.length){el.innerHTML=vacio('ti-bottle','La carta está vacía por ahora.');return;}
-  productos=menu;
+  productos=ordenarMenu(menu);
   setMonedaCarta(monedaCarta);
   renderChips();
 }

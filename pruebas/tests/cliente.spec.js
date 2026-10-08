@@ -67,6 +67,9 @@ test('pagar: dividir la cuenta, datos para copiar y monto exacto en Bs', async (
 test('carta pública: categorías, filtro y precios en Bs', async ({ page }) => {
   await page.goto('http://app.test/carta.html?s=s1');
   await expect(page.locator('.carta-item')).toHaveCount(5);
+  // Orden lógico (no alfabético) y, dentro de cada categoría, del más barato al más caro
+  await expect(page.locator('.chip')).toHaveText([/Todo/, /Cerveza/, /Ron/, /Whisky/, /Mezcladores/]);
+  await expect(page.locator('.carta-item').last()).toContainText('Coca-Cola 2L');
   await page.locator('.chip', { hasText: 'Ron' }).click();
   await expect(page.locator('.carta-item')).toHaveCount(1);
   await page.click('#cm-bs');
