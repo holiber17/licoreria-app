@@ -33,9 +33,10 @@ async function supaFetch(path, token){
   const res = await fetch(SUPA_URL+'/rest/v1/'+path,{
     headers:{'Authorization':'Bearer '+token,'apikey':SUPA_KEY,'Accept':'application/json'}
   });
-  if(!res.ok) return null;
+  // Un error (sesión vencida, red) no es lo mismo que "no existe": se lanza
+  if(!res.ok) throw new Error('supaFetch '+res.status+' '+path.split('?')[0]);
   const data = await res.json();
-  return Array.isArray(data)?data[0]:data;
+  return (Array.isArray(data)?data[0]:data)??null;
 }
 
 // Ítems de una lista de pedidos (para rankings)
