@@ -8,6 +8,7 @@ let pedidoCache=null;
 let sucursal=null;
 let partes=1;
 let metodoElegido='';
+let referenciaPago='';     // referencia del pago que escribe el cliente (opcional)
 let catalogo={};           // menu_id / nombre -> {categoria, imagen_url}
 let avisos=[];             // avisos de este pedido (últimas 12 h)
 let estadoAvisoAnterior={};
@@ -83,7 +84,7 @@ function renderPedido(pedido){
   let html=`<div class="cliente-header">
     <div class="avatar lg">${ini(pedido.cliente_nombre)}</div>
     <div class="cliente-nombre">${esc(pedido.cliente_nombre)}</div>
-    <div class="cliente-sub">${abierto?'Pedido activo':'Pedido cerrado'}</div>
+    <div class="cliente-sub">${pedido.mesa?'Mesa '+esc(String(pedido.mesa).replace(/^mesa\s+/i,''))+' · ':''}${abierto?'Pedido activo':'Pedido cerrado'}</div>
   </div>`;
 
   if(cobrado){
@@ -203,10 +204,14 @@ function actualizarEspera(){
   if(enEspera('mesonero')||pendiente){b.disabled=true;b.innerHTML='<i class="ti ti-check"></i> Ya le avisamos';}
 }
 
-async function enviarSolicitud(tipo,metodo){
+async function enviarSolicitud(tipo,metodo,referencia){
   if(!pedidoCache||pedidoCache.estado!=='abierto')return false;
   if(enEspera(tipo)){aviso('ti-clock','Ya avisamos al personal.<br>En un momento te atienden.');return false;}
-  const ok=await anonInsert('solicitudes',{sucursal_id:pedidoCache.sucursal_id,pedido_id:pedidoCache.id,tipo,metodo:metodo||null});
+  const base={sucursal_id:pedidoCache.sucursal_id,pedido_id:pedidoCache.id,tipo,metodo:metodo||null};
+  let ok=await anonInsert('solicitudes',referencia?{...base,referencia}:base);
+  // Si la columna `referencia` aún no existe (supabase/ajustes_mesonero.sql),
+  // el aviso se envía igual con la referencia dentro del texto del método.
+  if(!ok&&referencia)ok=await anonInsert('solicitudes',{...base,metodo:((metodo||'Pago')+' · ref '+referencia).slice(0,40)});
   if(!ok){aviso('ti-alert-triangle','No pudimos enviar el aviso.<br>Por favor llama a un mesonero.');return false;}
   try{localStorage.setItem(claveEspera(tipo),String(Date.now()));}catch(e){}
   if(navigator.vibrate)navigator.vibrate(40);
@@ -278,18 +283,26 @@ function renderPago(){
     html+=`<p class="t-sub mt-m">Paga en efectivo directamente al personal. Avísales para que te traigan la cuenta.</p>`;
   }
 
-  html+=`<button class="btn primary full grande mt-m" id="btn-avisar-pago" onclick="avisarPago()"><i class="ti ti-send"></i> Avisar que voy a pagar</button>
+  if(m.clave!=='efectivo'){
+    html+=`<div class="fg mt-m"><label for="ref-pago">Referencia del pago (opcional)</label>
+      <input id="ref-pago" inputmode="numeric" maxlength="20" autocomplete="off" placeholder="Número de referencia o últimos dígitos" value="${esc(referenciaPago)}" oninput="referenciaPago=limpiarReferencia(this.value)"></div>
+      <p class="t-mini">Si ya pagaste, escríbela y el mesonero verifica más rápido.</p>`;
+  }
+  html+=`<button class="btn primary full grande mt-m" id="btn-avisar-pago" onclick="avisarPago()"><i class="ti ti-send"></i> Avisar mi pago</button>
     <p class="t-mini mt-s" style="text-align:center">Un mesonero confirmará tu pago antes de cerrar la cuenta.</p>`;
   document.getElementById('pago-cuerpo').innerHTML=html;
   if(enEspera('pagar')){const b=document.getElementById('btn-avisar-pago');b.disabled=true;b.innerHTML='<i class="ti ti-check"></i> Ya avisamos al personal';}
 }
+
+function limpiarReferencia(v){return String(v||'').replace(/[^A-Za-z0-9-]/g,'').slice(0,20);}
 
 async function avisarPago(){
   const b=document.getElementById('btn-avisar-pago');
   b.disabled=true;
   const m=METODOS.find(x=>x.clave===metodoElegido);
   const detalle=(m?.nombre||'')+(partes>1?` · entre ${partes}`:'');
-  if(await enviarSolicitud('pagar',detalle)){
+  const ref=m&&m.clave!=='efectivo'?limpiarReferencia(referenciaPago):'';
+  if(await enviarSolicitud('pagar',detalle,ref)){
     b.innerHTML='<i class="ti ti-check"></i> Ya avisamos al personal';
     aviso('ti-wallet','¡Listo! Ya le avisamos al personal.<br>En un momento confirman tu pago.');
     loadPedido();

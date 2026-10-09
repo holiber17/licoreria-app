@@ -136,12 +136,23 @@ function seleccionarCliente(clienteId){
 
 function toggleNuevo(){if(alternar('form-nuevo'))$('nuevo-nombre').focus();}
 
+// "Carlos · Mesa 4": el nombre y la mesa se guardan por separado
+function etiquetaMesa(p){const m=String(p?.mesa||'').trim();return m?'Mesa '+m.replace(/^mesa\s+/i,''):'';}
+function nombreConMesa(p){const m=etiquetaMesa(p);return p.cliente_nombre+(m?' · '+m:'');}
+
 async function crearPedido(){
   const n=$('nuevo-nombre').value.trim();
+  const mesa=($('nuevo-mesa')?.value||'').trim();
   if(!n){alert('Escribe un nombre');return;}
-  const{data,error}=await sb.from('pedidos').insert({sucursal_id:sucursalActual.id,usuario_id:user.id,cliente_nombre:n,estado:'abierto',tasa_bcv:tasa()}).select().single();
+  const datos={sucursal_id:sucursalActual.id,usuario_id:user.id,cliente_nombre:n,estado:'abierto',tasa_bcv:tasa()};
+  let{data,error}=await sb.from('pedidos').insert(mesa?{...datos,mesa}:datos).select().single();
+  // Si la columna `mesa` aún no existe en Supabase (supabase/ajustes_mesonero.sql),
+  // el pedido se crea igual y la mesa se guarda dentro del nombre.
+  if(error&&mesa){
+    ({data,error}=await sb.from('pedidos').insert({...datos,cliente_nombre:n+' · Mesa '+mesa}).select().single());
+  }
   if(error){showToast('Error al crear pedido','danger');return;}
-  $('nuevo-nombre').value='';
+  $('nuevo-nombre').value='';if($('nuevo-mesa'))$('nuevo-mesa').value='';
   mostrar('form-nuevo',false);
   pedidoActual=data;pedidoActual.pedido_items=[];
   await abrirPedido(data.id);
@@ -153,7 +164,7 @@ async function renderPedidos(){
   const q=($('buscador')?.value||'').toLowerCase();
   const pedidos=await restGet('pedidos?select=*,pedido_items(*)&sucursal_id=eq.'+sucursalActual.id+'&estado=eq.abierto&order=created_at.desc');
   const el=$('pedidos-list');if(!el)return;
-  const lista=(pedidos||[]).filter(p=>p.cliente_nombre.toLowerCase().includes(q));
+  const lista=(pedidos||[]).filter(p=>nombreConMesa(p).toLowerCase().includes(q));
   if(!lista.length){el.innerHTML='<div class="empty"><i class="ti ti-glass-full"></i>Sin pedidos activos.<br>Toca <strong>Nuevo</strong> para abrir uno.</div>';return;}
   el.innerHTML='<div class="lista-pedidos">'+lista.map(p=>{
     const items=p.pedido_items||[];
@@ -163,6 +174,7 @@ async function renderPedidos(){
       <div class="fila">
         <div class="avatar sm">${ini(p.cliente_nombre)}</div>
         <span class="nombre recorta crece">${esc(p.cliente_nombre)}</span>
+        ${etiquetaMesa(p)?`<span class="aviso-tarjeta"><i class="ti ti-armchair"></i> ${esc(etiquetaMesa(p))}</span>`:''}
       </div>
       <div class="pedido-total">${fmtDual(total)}</div>
       <div class="t-mini mt-s"><i class="ti ti-clock"></i> ${fmtHora(p.created_at)} · ${items.length} ${plural(items.length,'ítem')}</div>
@@ -174,15 +186,32 @@ async function abrirPedido(id){
   seleccion.clear();
   const{data}=await sb.from('pedidos').select('*,pedido_items(*)').eq('id',id).single();
   pedidoActual=data;
-  $('det-nombre').textContent=data.cliente_nombre;
+  $('det-nombre').textContent=nombreConMesa(data);
   $('det-avatar').innerHTML=ini(data.cliente_nombre);
   $('nota-cobro').value='';
   showScr('s-detalle');switchTab('consumo');
 }
 async function cancelarPedido(){
   if(!pedidoActual)return;
-  if(!confirm('¿Cancelar el pedido sin cobrar?'))return;
-  await sb.from('pedidos').update({estado:'cancelado'}).eq('id',pedidoActual.id);
+  // Si ya hay consumo, el aviso dice cuánto dinero se deja de cobrar
+  const consumo=(pedidoActual.pedido_items||[]).reduce((s,i)=>s+(i.consumido*i.precio_usd),0);
+  // Con consumo servido, cancelar es dinero que no entra: solo el dueño.
+  // (La base de datos también lo exige: supabase/ajustes_mesonero.sql)
+  if(consumo>0&&perfil?.rol!=='dueno'){
+    showToast('Ya hay consumo servido: solo el dueño puede cancelar este pedido. Cóbralo o avísale al dueño.','danger');
+    return;
+  }
+  const pregunta=consumo>0
+    ?`Este pedido tiene ${fmtUSD(consumo)} consumidos. ¿Cancelarlo SIN cobrar?`
+    :'¿Cancelar el pedido sin cobrar?';
+  if(!confirm(pregunta))return;
+  // Queda escrito quién lo canceló y cuándo, para que el dueño pueda revisarlo
+  const quien=perfil?.nombre||user?.email||'usuario';
+  const cuando=new Date().toLocaleString('es-VE',{dateStyle:'short',timeStyle:'short'});
+  const prev=String(pedidoActual.nota||'').trim();
+  const nota=(prev?prev+' · ':'')+`Cancelado por ${quien} (${cuando})`+(consumo>0?` · consumo ${fmtUSD(consumo)}`:'');
+  const{error}=await sb.from('pedidos').update({estado:'cancelado',nota}).eq('id',pedidoActual.id).eq('estado','abierto');
+  if(error){showToast(msgError(error,'No se pudo cancelar el pedido'),'danger');return;}
   pedidoActual=null;goLista();
 }
 // ---- COBRO ----
@@ -385,7 +414,8 @@ async function reabastecer(itemId){
 }
 async function quitarItem(itemId){
   const item=(pedidoActual.pedido_items||[]).find(i=>i.id===itemId);
-  if(item&&item.tipo==='combo'&&item.consumido>0&&!confirm(`¿Quitar "${item.nombre}" de la cuenta? Ya se sirvieron ${item.consumido}.`))return;
+  // Quitar algo ya servido (combo o suelto) cambia el total a cobrar: pedir confirmación
+  if(item&&item.consumido>0&&!confirm(`¿Quitar "${item.nombre}" de la cuenta? Ya se sirvieron ${item.consumido}.`))return;
   const{error}=await sb.from('pedido_items').delete().eq('id',itemId);
   if(error){showToast(msgError(error,'No se pudo quitar'),'danger');return;}
   pedidoActual.pedido_items=(pedidoActual.pedido_items||[]).filter(i=>i.id!==itemId);

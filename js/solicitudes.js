@@ -57,7 +57,7 @@ function reiniciarSolicitudes(){
 async function cargarSolicitudes(){
   if(!solicitudesActivas||!sucursalActual)return;
   let r;
-  try{r=await rest('solicitudes?select=*,pedidos(cliente_nombre)&sucursal_id=eq.'+sucursalActual.id+'&estado=eq.pendiente&order=created_at.asc');}
+  try{r=await rest('solicitudes?select=*,pedidos(cliente_nombre,mesa)&sucursal_id=eq.'+sucursalActual.id+'&estado=eq.pendiente&order=created_at.asc');}
   catch(e){return;}
   // 404/400: la tabla todavía no se creó en Supabase. No insistir.
   if(r.status===404||r.status===400){solicitudesActivas=false;renderSolicitudes();return;}
@@ -75,8 +75,8 @@ function avisarSolicitudes(nuevas){
   if(navigator.vibrate)navigator.vibrate([150,80,150]);
   const s=nuevas[nuevas.length-1];
   const t=SOL_TIPOS[s.tipo]||SOL_TIPOS.mesonero;
-  const quien=s.pedidos?.cliente_nombre||'Un cliente';
-  toastAlerta(`<strong>${esc(quien)}</strong><br>${t.texto}${s.metodo?' · '+esc(s.metodo):''}${nuevas.length>1?`<br><span class="t-mini">y ${nuevas.length-1} aviso(s) más</span>`:''}`,7000);
+  const quien=s.pedidos?nombreConMesa(s.pedidos):'Un cliente';
+  toastAlerta(`<strong>${esc(quien)}</strong><br>${t.texto}${s.metodo?' · '+esc(s.metodo):''}${s.referencia?' · ref '+esc(s.referencia):''}${nuevas.length>1?`<br><span class="t-mini">y ${nuevas.length-1} aviso(s) más</span>`:''}`,7000);
   if(notifPermiso&&Notification.permission==='granted'){
     new Notification((s.tipo==='pagar'?'💳 ':'🔔 ')+quien,{body:t.texto+(s.metodo?' · '+s.metodo:''),icon:LOGO_URL,tag:'sol_'+s.id});
   }
@@ -105,8 +105,8 @@ function renderSolicitudes(){
       return`<div class="solicitud ${s.tipo}">
         <i class="ti ${t.icono} sol-icono"></i>
         <div class="crece" onclick="abrirPedido('${s.pedido_id}')">
-          <div class="t-fuerte recorta">${esc(s.pedidos?.cliente_nombre||'Pedido')}</div>
-          <div class="t-sub">${t.texto}${s.metodo?' · '+esc(s.metodo):''} · ${hace(s.created_at)}</div>
+          <div class="t-fuerte recorta">${esc(s.pedidos?nombreConMesa(s.pedidos):'Pedido')}</div>
+          <div class="t-sub">${t.texto}${s.metodo?' · '+esc(s.metodo):''}${s.referencia?' · <strong>ref '+esc(s.referencia)+'</strong>':''} · ${hace(s.created_at)}</div>
         </div>
         <button class="btn sm success" onclick="atenderSolicitud('${s.id}')"><i class="ti ti-check"></i> Atendido</button>
       </div>`;

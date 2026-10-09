@@ -133,10 +133,13 @@
           <button class="btn sm primary" onclick="toggleNuevo()"><i class="ti ti-plus"></i> Nuevo</button>
         </div>
         <div id="form-nuevo" style="display:none" class="af">
-          <div class="fg"><label for="nuevo-nombre">Nombre del cliente, grupo o mesa</label>
-            <input id="nuevo-nombre" placeholder="Ej: Carlos, Mesa 4..." autocomplete="off" onkeydown="if(event.key==='Enter')crearPedido()" oninput="buscarClienteSugerido()">
+          <div class="fg"><label for="nuevo-nombre">Nombre del cliente o grupo</label>
+            <input id="nuevo-nombre" placeholder="Ej: Carlos, Cumpleaños de Ana..." autocomplete="off" onkeydown="if(event.key==='Enter')crearPedido()" oninput="buscarClienteSugerido()">
           </div>
           <div id="cliente-sugeridos" class="sugerencias" style="display:none"></div>
+          <div class="fg"><label for="nuevo-mesa">Mesa (opcional)</label>
+            <input id="nuevo-mesa" placeholder="Ej: 4, Barra, Terraza 2" maxlength="30" autocomplete="off" onkeydown="if(event.key==='Enter')crearPedido()">
+          </div>
           <div class="fa">
             <button class="btn sm ghost" onclick="toggleNuevo()">Cancelar</button>
             <button class="btn sm primary" onclick="crearPedido()"><i class="ti ti-check"></i> Abrir pedido</button>
