@@ -181,8 +181,19 @@ async function abrirPedido(id){
 }
 async function cancelarPedido(){
   if(!pedidoActual)return;
-  if(!confirm('¿Cancelar el pedido sin cobrar?'))return;
-  await sb.from('pedidos').update({estado:'cancelado'}).eq('id',pedidoActual.id);
+  // Si ya hay consumo, el aviso dice cuánto dinero se deja de cobrar
+  const consumo=(pedidoActual.pedido_items||[]).reduce((s,i)=>s+(i.consumido*i.precio_usd),0);
+  const pregunta=consumo>0
+    ?`Este pedido tiene ${fmtUSD(consumo)} consumidos. ¿Cancelarlo SIN cobrar?`
+    :'¿Cancelar el pedido sin cobrar?';
+  if(!confirm(pregunta))return;
+  // Queda escrito quién lo canceló y cuándo, para que el dueño pueda revisarlo
+  const quien=perfil?.nombre||user?.email||'usuario';
+  const cuando=new Date().toLocaleString('es-VE',{dateStyle:'short',timeStyle:'short'});
+  const prev=String(pedidoActual.nota||'').trim();
+  const nota=(prev?prev+' · ':'')+`Cancelado por ${quien} (${cuando})`+(consumo>0?` · consumo ${fmtUSD(consumo)}`:'');
+  const{error}=await sb.from('pedidos').update({estado:'cancelado',nota}).eq('id',pedidoActual.id).eq('estado','abierto');
+  if(error){showToast(msgError(error,'No se pudo cancelar el pedido'),'danger');return;}
   pedidoActual=null;goLista();
 }
 // ---- COBRO ----
@@ -385,7 +396,8 @@ async function reabastecer(itemId){
 }
 async function quitarItem(itemId){
   const item=(pedidoActual.pedido_items||[]).find(i=>i.id===itemId);
-  if(item&&item.tipo==='combo'&&item.consumido>0&&!confirm(`¿Quitar "${item.nombre}" de la cuenta? Ya se sirvieron ${item.consumido}.`))return;
+  // Quitar algo ya servido (combo o suelto) cambia el total a cobrar: pedir confirmación
+  if(item&&item.consumido>0&&!confirm(`¿Quitar "${item.nombre}" de la cuenta? Ya se sirvieron ${item.consumido}.`))return;
   const{error}=await sb.from('pedido_items').delete().eq('id',itemId);
   if(error){showToast(msgError(error,'No se pudo quitar'),'danger');return;}
   pedidoActual.pedido_items=(pedidoActual.pedido_items||[]).filter(i=>i.id!==itemId);
