@@ -64,6 +64,22 @@ test('pagar: dividir la cuenta, datos para copiar y monto exacto en Bs', async (
   expect(base.db.solicitudes[0].metodo).toContain('entre 2');
 });
 
+test('pagar: la referencia que escribe el cliente le llega al mesonero', async ({ page }) => {
+  await page.goto('http://app.test/pedido.html?id=p1');
+  await page.click('text=Quiero pagar');
+  await page.fill('#ref-pago', '48 213!');
+  await page.click('#btn-avisar-pago');
+  await expect.poll(() => base.db.solicitudes.length).toBe(1);
+  expect(base.db.solicitudes[0]).toMatchObject({ tipo: 'pagar', referencia: '48213' });
+});
+
+test('si el cliente paga en efectivo no se pide referencia', async ({ page }) => {
+  await page.goto('http://app.test/pedido.html?id=p1');
+  await page.click('text=Quiero pagar');
+  await page.locator('.metodo-btn', { hasText: 'Efectivo' }).click();
+  await expect(page.locator('#ref-pago')).toHaveCount(0);
+});
+
 test('carta pública: categorías, filtro y precios en Bs', async ({ page }) => {
   await page.goto('http://app.test/carta.html?s=s1');
   await expect(page.locator('.carta-item')).toHaveCount(5);

@@ -120,3 +120,36 @@ test('los avisos de clientes aparecen en el panel y en la tarjeta del pedido', a
   await expect(page.locator('#solicitudes-panel')).toBeHidden();
   expect(base.db.solicitudes[0].estado).toBe('atendida');
 });
+
+test('la mesa se guarda aparte del nombre y se ve en la tarjeta del pedido', async ({ page }) => {
+  await page.locator('#s-lista .top-bar .btn.primary').click();
+  await page.fill('#nuevo-nombre', 'Carlos');
+  await page.fill('#nuevo-mesa', '4');
+  await page.locator('#form-nuevo .btn.primary').click();
+  await expect(page.locator('#s-detalle')).toHaveClass(/active/);
+  expect(base.db.pedidos[0]).toMatchObject({ cliente_nombre: 'Carlos', mesa: '4' });
+  await expect(page.locator('#det-nombre')).toHaveText('Carlos · Mesa 4');
+  await page.locator('#s-detalle .top-bar .btn.ghost').click();
+  await expect(page.locator('.cli-card .aviso-tarjeta')).toContainText('Mesa 4');
+});
+
+test('cancelar sin consumo deja escrito quién lo canceló', async ({ page }) => {
+  await abrirPedido(page, 'Mesa 7');
+  await page.click('#tab-cuenta');
+  await page.click('text=Cancelar pedido sin cobrar');
+  await expect.poll(() => base.db.pedidos[0].estado).toBe('cancelado');
+  expect(base.db.pedidos[0].nota).toContain('Cancelado por');
+  expect(base.db.pedidos[0].nota).toContain('Pedro Barra');
+});
+
+test('con consumo servido, un empleado no puede cancelar el pedido', async ({ page }) => {
+  await abrirPedido(page, 'Mesa 8');
+  await page.click('#tab-agregar');
+  await page.locator('.menu-grid-item', { hasText: 'Ron Cacique' }).click();
+  await page.click('#barra-agregar-btn');
+  await expect(page.locator('#mt-consumo')).toBeVisible();
+  await page.click('#tab-cuenta');
+  await page.click('text=Cancelar pedido sin cobrar');
+  await expect(page.locator('.toast.error')).toContainText('solo el dueño');
+  expect(base.db.pedidos[0].estado).toBe('abierto');
+});
