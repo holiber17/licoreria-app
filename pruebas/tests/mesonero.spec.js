@@ -113,7 +113,7 @@ test('los avisos de clientes aparecen en el panel y en la tarjeta del pedido', a
   const pedido = base.db.pedidos[0];
   base.db.solicitudes.push({ id: 'q1', sucursal_id: 's1', pedido_id: pedido.id, tipo: 'pagar', metodo: 'Zelle', estado: 'pendiente', created_at: new Date().toISOString() });
   await page.locator('#s-detalle .top-bar .btn.ghost').click();
-  await page.evaluate(() => cargarSolicitudes());
+  await page.evaluate(() => window.__licor.cargarSolicitudes());
   await expect(page.locator('#solicitudes-panel .solicitud')).toHaveCount(1);
   await expect(page.locator(`.cli-card[data-pedido="${pedido.id}"] .aviso-tarjeta`)).toContainText('Quiere pagar');
   await page.locator('#solicitudes-panel .solicitud .btn').click();

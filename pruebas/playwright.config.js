@@ -1,6 +1,6 @@
 // Pruebas de la app en un navegador real, con Supabase simulado
 // (ver tests/apoyo/base-falsa.js). Se corren desde esta carpeta con:
-//   npm ci && npx playwright install chromium && npm test
+//   npm ci && npm run build (en la raíz) y luego aquí: npm ci && npx playwright install chromium && npm test
 const { defineConfig, devices } = require('@playwright/test');
 
 module.exports = defineConfig({

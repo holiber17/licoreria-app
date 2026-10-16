@@ -9,22 +9,26 @@ jobs:
   navegador:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: pruebas
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
-          cache-dependency-path: pruebas/package-lock.json
-      - name: Instalar dependencias
+          cache-dependency-path: |
+            package-lock.json
+            pruebas/package-lock.json
+      - name: Compilar la app
+        run: npm ci && npm run build
+      - name: Instalar dependencias de las pruebas
         run: npm ci
+        working-directory: pruebas
       - name: Instalar Chromium
         run: npx playwright install --with-deps chromium
+        working-directory: pruebas
       - name: Correr pruebas
         run: npx playwright test
+        working-directory: pruebas
       - name: Guardar reporte si algo falla
         if: failure()
         uses: actions/upload-artifact@v4

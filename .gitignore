@@ -1,0 +1,5 @@
+node_modules
+dist
+pruebas/node_modules
+pruebas/playwright-report
+pruebas/test-results

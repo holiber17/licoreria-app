@@ -7,10 +7,8 @@
 const fs = require('fs');
 const path = require('path');
 
-// Raíz de la app (pruebas/tests/apoyo → ../../..)
-const RAIZ = path.resolve(__dirname, '..', '..', '..');
-// Copia local de las librerías del CDN (opcional, para entornos sin internet)
-const DEPS = process.env.LICOR_DEPS || '';
+// La app compilada (npm run build en la raíz deja todo en dist/)
+const RAIZ = process.env.LICOR_RAIZ || path.resolve(__dirname, '..', '..', '..', 'dist');
 
 const TIPOS = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.svg': 'image/svg+xml', '.json': 'application/json' };
 
@@ -20,7 +18,7 @@ function datosIniciales() {
       id: 's1', nombre: 'Sucursal Centro', ciudad: 'Caracas', direccion: 'Av. Urdaneta', app_nombre: 'La Bodeguita',
       datos_pago: { pago_movil: { banco: 'Banesco (0134)', telefono: '0414-5550101', cedula: 'V-12345678' }, zelle: { correo: 'pagos@labodeguita.com', titular: 'Ana Pérez' } }
     }],
-    perfiles: [{ id: 'u2', nombre: 'Pedro Barra', rol: 'empleado', sucursal_id: 's1' }],
+    perfiles: [{ id: 'u2', nombre: 'Pedro Barra', rol: 'empleado', sucursal_id: 's1' }, { id: 'u3', nombre: 'Nuevo Ingreso', rol: 'empleado', sucursal_id: null }],
     menu: [
       { id: 'm1', sucursal_id: 's1', nombre: 'Combo Polar x12', tipo: 'combo', precio_usd: 1.2, unidad: 'lata', categoria: 'Cerveza', unidades_combo: 12, activo: true },
       { id: 'm2', sucursal_id: 's1', nombre: 'Ron Cacique 500 años', tipo: 'suelto', precio_usd: 28, unidad: 'botella', categoria: 'Ron', unidades_combo: 1, activo: true },
@@ -144,14 +142,8 @@ async function conectar(context, base) {
       if (!f.startsWith(RAIZ) || !fs.existsSync(f)) return route.fulfill({ status: 404 });
       return route.fulfill({ body: fs.readFileSync(f), contentType: TIPOS[path.extname(f)] || 'application/octet-stream' });
     }
-    if (url.includes('cdn.jsdelivr.net') && DEPS) {
-      if (url.includes('@supabase/supabase-js')) return route.fulfill({ path: path.join(DEPS, 'supabase.js'), contentType: 'application/javascript' });
-      if (url.includes('@tabler/icons-webfont')) {
-        const rel = url.split('icons-webfont@2.44.0/')[1].split('?')[0];
-        return route.fulfill({ path: path.join(DEPS, 'tabler', rel) });
-      }
-    }
-    if (url.includes('cdn.jsdelivr.net') || url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com')) {
+    // Tipografías y códigos QR vienen de internet; si no hay red, la prueba sigue sin ellos
+    if (url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com') || url.includes('api.qrserver.com')) {
       return route.continue().catch(() => route.abort());
     }
     if (url.includes('/auth/v1/user')) return route.fulfill({ json: { id: 'u2', email: 'pedro@bodeguita.com', user_metadata: {} } });
@@ -175,6 +167,15 @@ async function sesionEmpleado(page) {
   });
 }
 
+// Sesión del dueño (mismo usuario, con rol de dueño en la base y en la caché)
+async function sesionDueno(page, base) {
+  base.db.perfiles[0].rol = 'dueno';
+  await page.addInitScript(() => {
+    localStorage.setItem('sb-ysnsmsfeqbnezjgxkkui-auth-token', JSON.stringify({ access_token: 't', refresh_token: 'r', expires_at: 4102444800, user: { id: 'u2' } }));
+    localStorage.setItem('perfil_cache_u2', JSON.stringify({ id: 'u2', nombre: 'Pedro Barra', rol: 'dueno', sucursal_id: 's1', sucursales: { id: 's1', nombre: 'Sucursal Centro', app_nombre: 'La Bodeguita' } }));
+  });
+}
+
 // Errores de JavaScript de la página (para afirmar que no hubo ninguno)
 function vigilarErrores(page) {
   const errores = [];
@@ -182,4 +183,4 @@ function vigilarErrores(page) {
   return errores;
 }
 
-module.exports = { BaseFalsa, conectar, sesionEmpleado, vigilarErrores };
+module.exports = { BaseFalsa, conectar, sesionEmpleado, sesionDueno, vigilarErrores };
