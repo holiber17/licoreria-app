@@ -48,7 +48,7 @@ test('llamar al mesonero: crea el aviso y muestra "Ya vienen" cuando lo atienden
 
   // El mesonero lo marca como atendido
   Object.assign(base.db.solicitudes[0], { estado: 'atendida', atendida_at: new Date().toISOString() });
-  await page.evaluate(() => loadPedido());
+  await page.evaluate(() => window.__licor.loadPedido());
   await expect(page.locator('.estado-aviso.ok')).toContainText('Ya vienen');
 });
 
