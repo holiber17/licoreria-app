@@ -15,22 +15,28 @@ if (typeof window !== 'undefined') {
 export const avisos = $state({ lista: [] });
 let n = 0;
 
+const MAX_CORTOS = 3;   // más de tres avisos cortos a la vez no se leen: se va el más viejo
+
 function poner(aviso, ms) {
   const id = ++n;
-  avisos.lista.push({ id, ...aviso });
-  setTimeout(() => { avisos.lista = avisos.lista.filter(a => a.id !== id); }, ms);
+  avisos.lista.push({ id, ms, ...aviso });
+  const cortos = avisos.lista.filter(a => a.clase !== 'alerta');
+  if (cortos.length > MAX_CORTOS) cerrarAviso(cortos[0].id);
+  setTimeout(() => cerrarAviso(id), ms);
 }
 
-// Aviso corto de éxito o error
+// Aviso corto de éxito o error (abajo). El ícono ya dice "listo": el ✓ del texto sobra.
 export function showToast(msg, tipo = 'success') {
   const ok = tipo === 'success';
-  const ms = Math.max(ok ? 2500 : 5000, String(msg).length * 60);   // tiempo para leerlo entero
-  poner({ clase: ok ? 'ok' : 'error', icono: ok ? 'ti-circle-check' : 'ti-alert-circle', texto: msg }, ms);
+  const texto = String(msg).replace(/\s*✓\s*$/, '');
+  const ms = Math.max(ok ? 2500 : 5000, texto.length * 60);   // tiempo para leerlo entero
+  poner({ clase: ok ? 'ok' : 'error', icono: ok ? 'ti-check' : 'ti-alert-circle', texto }, ms);
 }
-// Aviso grande (reemplaza al anterior). `html` ya debe venir escapado.
-export function toastAlerta(html, ms = 5000, icono = 'ti-alert-triangle', arriba = false) {
+// Aviso grande arriba, con botón para cerrarlo (reemplaza al anterior). `html` ya
+// debe venir escapado: la primera línea en <strong> hace de título.
+export function toastAlerta(html, ms = 5000, icono = 'ti-alert-triangle') {
   avisos.lista = avisos.lista.filter(a => a.clase !== 'alerta');
-  poner({ clase: 'alerta', icono, html, arriba }, ms);
+  poner({ clase: 'alerta', icono, html }, ms);
 }
 
 export const cerrarAviso = id => { avisos.lista = avisos.lista.filter(a => a.id !== id); };

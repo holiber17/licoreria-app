@@ -1,6 +1,6 @@
 // Usabilidad y accesibilidad: tema del teléfono, hojas como diálogos, teclado, áreas táctiles y avisos
 const { test, expect } = require('@playwright/test');
-const { BaseFalsa, conectar, sesionEmpleado, vigilarErrores } = require('./apoyo/base-falsa');
+const { BaseFalsa, conectar, sesionEmpleado, sesionDueno, vigilarErrores } = require('./apoyo/base-falsa');
 
 let base, errores;
 
@@ -79,4 +79,28 @@ test('carta: en los combos el precio grande es el del combo completo', async ({ 
   const combo = page.locator('.carta-item', { hasText: 'Combo Polar' });
   await expect(combo.locator('.carta-precio')).toContainText('$14.40');
   await expect(combo.locator('.carta-combo')).toContainText('$1.20 c/u');
+});
+
+test('avisos: dos seguidos se apilan sin taparse, y el aviso de un cliente se cierra con su botón', async ({ page }) => {
+  await sesionDueno(page, base);
+  await page.goto('http://app.test/index.html');
+  await expect(page.locator('#app')).toBeVisible();
+  await page.waitForTimeout(500);
+  base.db.solicitudes.push({ id: 'sx', sucursal_id: 's1', pedido_id: 'p1', tipo: 'pagar', metodo: 'Pago móvil', estado: 'pendiente', created_at: new Date().toISOString() });
+  await page.evaluate(() => window.__licor?.cargarSolicitudes?.());
+  const alerta = page.locator('.toast.alerta');
+  await expect(alerta).toContainText('Carlos · Mesa 4');
+  await expect(alerta.locator('.ti-wallet')).toHaveCount(1);   // el ícono dice qué pidió
+  await alerta.getByRole('button', { name: 'Cerrar aviso' }).click();
+  await expect(alerta).toHaveCount(0);
+
+  await page.click('#gnav-admin');
+  await page.fill('#brand-nombre', 'El Rincón');
+  await page.click('#suc-branding-card .btn.primary');
+  await page.locator('.btn.primary', { hasText: 'Guardar datos de pago' }).click();
+  const cortos = page.locator('.toasts.abajo .toast');
+  await expect(cortos).toHaveCount(2);
+  const [a, b] = [await cortos.nth(0).boundingBox(), await cortos.nth(1).boundingBox()];
+  expect(a.y + a.height).toBeLessThanOrEqual(b.y);   // uno encima del otro, sin taparse
+  await expect(cortos.nth(1)).not.toContainText('✓');   // el ícono ya dice "listo"
 });

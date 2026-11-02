@@ -116,23 +116,23 @@
     avisos.forEach(a => {
       if (anterior[a.id] === 'pendiente' && a.estado === 'atendida') {
         if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
-        aviso('ti-walk', a.tipo === 'pagar' ? 'Un mesonero viene a confirmar tu pago' : '¡Ya vienen!');
+        aviso('ti-walk', a.tipo === 'pagar' ? '<strong>Un mesonero viene</strong>a confirmar tu pago' : '<strong>¡Ya vienen!</strong>El mesonero vio tu llamado');
       }
       anterior[a.id] = a.estado;
     });
   }
-  function aviso(icono, html, ms = 4000) { toastAlerta(html, ms, icono, true); }
+  function aviso(icono, html, ms = 4000) { toastAlerta(html, ms, icono); }
 
   // ---- Solicitudes al personal ----
   async function enviarSolicitud(tipo, metodo, referencia) {
     if (!pedido || pedido.estado !== 'abierto') {
       pagoAbierto = false;
-      aviso('ti-info-circle', 'Este pedido ya está cerrado.<br>Si tienes dudas, pregúntale al personal.');
+      aviso('ti-info-circle', '<strong>Este pedido ya está cerrado</strong>Si tienes dudas, pregúntale al personal.');
       return false;
     }
-    if (enEspera(tipo)) { aviso('ti-clock', 'Ya avisamos al personal.<br>En un momento te atienden.'); return false; }
+    if (enEspera(tipo)) { aviso('ti-clock', '<strong>Ya avisamos al personal</strong>En un momento te atienden.'); return false; }
     const { ok } = await anonRpc('crear_solicitud', { p_pedido: pedido.id, p_tipo: tipo, p_metodo: metodo || null, p_referencia: referencia || null });
-    if (!ok) { aviso('ti-alert-triangle', 'No pudimos enviar el aviso.<br>Por favor llama a un mesonero.'); return false; }
+    if (!ok) { aviso('ti-alert-triangle', '<strong>No pudimos enviar el aviso</strong>Por favor llama a un mesonero.'); return false; }
     const t = Date.now();
     try { localStorage.setItem(claveEspera(tipo), String(t)); } catch (err) {}
     hasta[tipo] = t + ESPERA_MS;
@@ -145,10 +145,8 @@
   async function llamarMesonero() {
     pedirPermiso();
     enviandoMesonero = true;
-    if (await enviarSolicitud('mesonero')) {
-      aviso('ti-bell-ringing', '¡Listo! Le avisamos al mesonero.');
-      loadPedido();
-    }
+    // Sin aviso flotante: la página ya muestra "Le avisamos al mesonero"
+    if (await enviarSolicitud('mesonero')) loadPedido();
     enviandoMesonero = false;
   }
 
@@ -174,10 +172,8 @@
     enviandoPago = true;
     const detalle = (metodo?.nombre || '') + (partes > 1 ? ` · entre ${partes}` : '');
     const ref = metodo.clave !== 'efectivo' ? limpiarReferencia(referenciaPago) : '';
-    if (await enviarSolicitud('pagar', detalle, ref)) {
-      aviso('ti-wallet', '¡Listo! Ya le avisamos al personal.<br>En un momento confirman tu pago.');
-      loadPedido();
-    }
+    // Sin aviso flotante: la página ya muestra "Avisaste que vas a pagar"
+    if (await enviarSolicitud('pagar', detalle, ref)) loadPedido();
     enviandoPago = false;
   }
 
@@ -211,13 +207,13 @@
       const key = item.id + '_ultima';
       if (restante === 1 && !notificadosYa.has(key)) {
         notificadosYa.add(key); guardarVistos(); alertaSonido();
-        aviso('ti-alert-triangle', '¡Última unidad de<br><strong>' + esc(item.nombre) + '</strong>!', 6000);
+        aviso('ti-alert-triangle', '<strong>¡Última unidad!</strong>' + esc(item.nombre), 6000);
         if (permiso) new Notification('⚠️ ¡Última unidad!', { body: 'Solo queda 1 ' + item.unidad + ' de ' + item.nombre, icon: LOGO_URL, tag: key, requireInteraction: true });
       }
       const keyFull = item.id + '_agotado';
       if (restante === 0 && !notificadosYa.has(keyFull)) {
         notificadosYa.add(keyFull); guardarVistos(); alertaSonido();
-        aviso('ti-ban', 'Se terminó tu combo<br><strong>' + esc(item.nombre) + '</strong>', 6000);
+        aviso('ti-ban', '<strong>Se terminó tu combo</strong>' + esc(item.nombre), 6000);
         if (permiso) new Notification('🚫 Se terminó el combo', { body: item.nombre + ' — no quedan unidades', icon: LOGO_URL, tag: keyFull, requireInteraction: true });
       }
     });
