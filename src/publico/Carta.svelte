@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { anonGet, anonRpc } from '../lib/api.js';
   import { ordenarMenu, getCatIcon, categoriasDe } from '../lib/catalogo.js';
-  import { tasas, fetchTasas, fmtUSD, fmtBs, fmtEUR } from './comun.svelte.js';
+  import { tasas, fetchTasas, usarTasaDelNegocio, fmtUSD, fmtBs, fmtEUR } from './comun.svelte.js';
   import ProdImg from '../ui/ProdImg.svelte';
   import Toasts from '../ui/Toasts.svelte';
 
@@ -19,8 +19,9 @@
   $effect(() => { if (nombreNegocio) document.title = 'Carta — ' + nombreNegocio; });
 
   function setMoneda(m) { moneda = m; try { localStorage.setItem('carta_moneda', m); } catch (err) {} }
-  const principal = n => (moneda === 'bs' ? fmtBs(n) : moneda === 'eur' && tasas.eur ? fmtEUR(n) : fmtUSD(n));
-  const secundario = n => (moneda === 'bs' ? fmtUSD(n) : fmtBs(n));
+  // Sin tasa BCV la carta queda solo en dólares (no se inventan bolívares)
+  const principal = n => (moneda === 'bs' && tasas.usd ? fmtBs(n) : moneda === 'eur' && tasas.eur && tasas.usd ? fmtEUR(n) : fmtUSD(n));
+  const secundario = n => (!tasas.usd ? '' : moneda === 'bs' ? fmtUSD(n) : fmtBs(n));
 
   const cats = $derived(categoriasDe(productos));
   const lista = $derived(productos.filter(p => {
@@ -42,6 +43,8 @@
       fetchTasas(),
     ]);
     negocio = suc && suc[0] || null;
+    // La tasa con la que cobra el negocio manda sobre la de dolarapi
+    usarTasaDelNegocio(negocio?.tasa_actual);
     // El stock solo se ve si el dueño lo hizo público (ver supabase/cliente.sql)
     agotados = new Set((inv || []).filter(i => parseFloat(i.stock_actual) <= 0).map(i => String(i.nombre).toLowerCase()));
     if (menu === null) { estado = 'error'; return; }
@@ -73,7 +76,7 @@
       <div class="carta-lema">Carta del día</div>
       <div class="carta-titulo">Precios actualizados</div>
       <div class="carta-tasa" id="carta-tasa">
-        {#if estado === 'cargando'}Cargando tasa…{:else}Tasa BCV: Bs {tasas.usd.toFixed(2)} por ${tasas.eur ? ` · Bs ${tasas.eur.toFixed(2)} por €` : ''}{/if}
+        {#if estado === 'cargando'}Cargando tasa…{:else if !tasas.usd}Precios en dólares · sin tasa BCV por ahora{:else}Tasa BCV: Bs {tasas.usd.toFixed(2)} por ${tasas.eur ? ` · Bs ${tasas.eur.toFixed(2)} por €` : ''}{/if}
       </div>
     </section>
 

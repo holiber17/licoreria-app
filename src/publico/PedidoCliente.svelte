@@ -5,6 +5,7 @@
   import { ini, etiquetaMesa } from '../lib/catalogo.js';
   import { toastAlerta, esc } from '../lib/avisos.svelte.js';
   import { tasas, fetchTasas, fmtUSD, fmtBs } from './comun.svelte.js';
+  import { bs, bsParaCopiar, repartir } from '../lib/dinero.js';
   import ProdImg from '../ui/ProdImg.svelte';
   import Hoja from '../ui/Hoja.svelte';
   import Toasts from '../ui/Toasts.svelte';
@@ -51,9 +52,13 @@
   // ---- Datos ----
   const items = $derived(pedido?.pedido_items || []);
   const totalUSD = $derived(items.reduce((s, i) => s + i.consumido * i.precio_usd, 0));
-  const tasaPedido = $derived(parseFloat(pedido?.tasa_bcv) || tasas.usd);
   const abierto = $derived(pedido?.estado === 'abierto');
   const cobrado = $derived(pedido?.estado === 'cobrado');
+  // Abierto: la tasa de hoy de la sucursal, la misma con la que se va a cobrar.
+  // Cobrado: la tasa con la que se cobró. Sin ninguna, 0 ("Bs —").
+  const tasaPedido = $derived(cobrado
+    ? (parseFloat(pedido?.tasa_bcv) || 0)
+    : (parseFloat(pedido?.tasa_actual) || tasas.usd || parseFloat(pedido?.tasa_bcv) || 0));
   const nombreNegocio = $derived(sucursal ? (sucursal.app_nombre || sucursal.nombre) : '');
   $effect(() => { document.title = 'Mi pedido — ' + (nombreNegocio || 'LicorApp'); });
   let logoRoto = $state(false);
@@ -174,8 +179,12 @@
     metodoElegido = disponibles.length === 1 ? disponibles[0].clave : (disponibles.find(m => m.clave !== 'efectivo')?.clave || 'efectivo');
     pagoAbierto = true;
   }
-  const porPersona = $derived(totalUSD / partes);
-  const montoBs = $derived(Math.round(porPersona * tasaPedido));
+  // Repartido en centavos y céntimos para que las partes sumen exacto el total
+  const partesUSD = $derived(repartir(totalUSD, partes));
+  const partesBs = $derived(repartir(totalUSD * tasaPedido, partes));
+  const porPersona = $derived(partesUSD[0]);
+  const montoBs = $derived(partesBs[0]);
+  const desiguales = $derived(partes > 1 && partesUSD[0] !== partesUSD[partes - 1]);
   const metodo = $derived(METODOS.find(x => x.clave === metodoElegido) || METODOS[3]);
   const datosMetodo = $derived((sucursal?.datos_pago || {})[metodo.clave] || {});
   const camposConDatos = $derived(metodo.campos.filter(([k]) => String(datosMetodo[k] || '').trim()));
@@ -354,7 +363,10 @@
         </div>
       {/if}
 
-      <div class="pie-tasa">Tasa BCV del pedido: Bs {tasaPedido.toFixed(2)} por $</div>
+      <div class="pie-tasa" id="pie-tasa">
+        {#if !tasaPedido}Sin tasa BCV por ahora: pregunta el monto en Bs al personal
+        {:else}{cobrado ? 'Tasa BCV del cobro' : 'Tasa BCV de hoy'}: Bs {bs(tasaPedido)} por ${/if}
+      </div>
       {#if pedido.sucursal_id}
         <a class="btn full" href="carta.html?s={encodeURIComponent(pedido.sucursal_id)}"><i class="ti ti-book"></i> Ver la carta y precios</a>
       {/if}
@@ -369,7 +381,10 @@
     <div class="pago-total">
       <div class="t-mini">{partes > 1 ? `Cada persona paga (entre ${partes})` : 'Total a pagar'}</div>
       <div class="pago-usd">{fmtUSD(porPersona)}</div>
-      <div class="pago-bs">Bs {montoBs.toLocaleString('es-VE')}</div>
+      <div class="pago-bs">{tasaPedido ? 'Bs ' + bs(montoBs) : 'Bs — · pregunta el monto al personal'}</div>
+      {#if desiguales}
+        <div class="t-mini" id="pago-reparto">Para que cuadre: {partesUSD.filter(v => v === partesUSD[0]).length} {partesUSD.filter(v => v === partesUSD[0]).length === 1 ? 'paga' : 'pagan'} {fmtUSD(partesUSD[0])} y {partesUSD.filter(v => v !== partesUSD[0]).length} {fmtUSD(partesUSD[partes - 1])}</div>
+      {/if}
     </div>
     <div class="dividir">
       <span><i class="ti ti-users"></i> Dividir la cuenta</span>
@@ -389,7 +404,7 @@
     {#if camposConDatos.length}
       <div class="datos-pago">
         {#each camposConDatos as [k, etiqueta] (k)}<FilaCopiable {etiqueta} valor={String(datosMetodo[k]).trim()} />{/each}
-        {#if metodo.bs}<FilaCopiable etiqueta="Monto en Bs" valor={String(montoBs)} />
+        {#if metodo.bs}{#if tasaPedido}<FilaCopiable etiqueta="Monto en Bs" valor={bsParaCopiar(montoBs)} />{/if}
         {:else}<FilaCopiable etiqueta="Monto en $" valor={porPersona.toFixed(2)} />{/if}
       </div>
     {:else if metodo.clave === 'efectivo'}

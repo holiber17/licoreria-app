@@ -4,7 +4,8 @@
   import { e, setMoneda, esDueno } from '../lib/estado.svelte.js';
   import { tema, alternarTema } from '../lib/tema.svelte.js';
   import { doLogout } from './sesion.svelte.js';
-  import { fetchBCV } from './tasas.svelte.js';
+  import { fetchBCV, ponerTasaManual } from './tasas.svelte.js';
+  import { showToast } from '../lib/avisos.svelte.js';
   import { loadMenu } from './menu.svelte.js';
   import { iniciarSolicitudes, detenerSolicitudes } from './solicitudes.svelte.js';
   import { pedirPermisoNotif } from './notificaciones.js';
@@ -18,6 +19,14 @@
 
   const nombre = $derived(e.sucursal?.app_nombre || e.sucursal?.nombre || 'LicorApp');
   let logoRoto = $state(false);
+
+  // El dueño puede fijar la tasa del día; es la que usa el cobro y la que ve el cliente
+  async function corregirTasa() {
+    const v = prompt('Tasa BCV de hoy (Bs por 1 $):', e.tasaBCV ? e.tasaBCV.toFixed(2) : '');
+    if (v === null) return;
+    if (await ponerTasaManual(v)) showToast('Tasa del día guardada ✓');
+    else showToast('Tasa no válida o no se pudo guardar', 'danger');
+  }
   let pantallaCompleta = $state(false);
 
   const secciones = $derived([
@@ -100,6 +109,9 @@
         <span class="rblk" title="Bolívares por 1 USD"><i class="ti ti-currency-dollar"></i><span class="moneda-cod">USD</span><input id="tasa-input" type="text" value={e.tasaBCV.toFixed(2)} readonly tabindex="-1" aria-readonly="true" /></span>
         <span class="rblk" title="Bolívares por 1 EUR"><i class="ti ti-currency-euro"></i><span class="moneda-cod">EUR</span><input id="tasa-eur-input" type="text" value={e.tasaEUR.toFixed(2)} readonly tabindex="-1" aria-readonly="true" /></span>
         <span id="tbadge" class="tbadge {e.tasaEstado.clase}"><i class="ti {e.tasaEstado.icono}"></i> {e.tasaEstado.texto}</span>
+        {#if esDueno()}
+          <button class="btn sm ghost ico" id="btn-tasa-manual" onclick={corregirTasa} aria-label="Poner la tasa BCV a mano" title="Poner la tasa BCV a mano"><i class="ti ti-pencil"></i></button>
+        {/if}
       </div>
       <div class="moneda-sel">
         <span>Mostrar en</span>

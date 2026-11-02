@@ -142,7 +142,7 @@
         <div id="det-avatar" class="avatar">{ini(ped.actual.cliente_nombre)}</div>
         <div class="crece">
           <div id="det-nombre" class="det-nombre recorta">{nombreConMesa(ped.actual)}</div>
-          <div class="t-sub">Pedido abierto · <span id="det-tasa">BCV {e.tasaBCV.toFixed(2)}</span></div>
+          <div class="t-sub">Pedido abierto · <span id="det-tasa">{e.tasaBCV ? 'BCV ' + e.tasaBCV.toFixed(2) : 'Sin tasa BCV'}</span></div>
         </div>
         <button class="btn sm" onclick={() => (qrAbierto = true)} title="Compartir QR con el cliente"><i class="ti ti-qrcode"></i> QR</button>
       </div>

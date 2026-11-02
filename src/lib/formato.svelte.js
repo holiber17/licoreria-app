@@ -1,15 +1,17 @@
 // Formato de montos según la moneda y las tasas elegidas
 import { e } from './estado.svelte.js';
 import { fmtUSD } from './catalogo.js';
+import { bs } from './dinero.js';
 export { fmtUSD };
 
 export const tasa = () => e.tasaBCV;
 export const tasaEur = () => e.tasaEUR;
-export const fmtBs = n => 'Bs ' + Math.round((+n || 0) * e.tasaBCV).toLocaleString('es-VE');
-export const fmtBsCon = (n, t) => 'Bs ' + Math.round((+n || 0) * (parseFloat(t) || e.tasaBCV)).toLocaleString('es-VE');
+// Bs con céntimos (el pago móvil los usa). Sin tasa se muestra "Bs —".
+export const fmtBsCon = (n, t) => { const tasa = parseFloat(t) || e.tasaBCV; return tasa ? 'Bs ' + bs((+n || 0) * tasa) : 'Bs —'; };
+export const fmtBs = n => fmtBsCon(n, e.tasaBCV);
 export const usdAEur = n => (e.tasaEUR ? (+n || 0) * e.tasaBCV / e.tasaEUR : 0);
-export const fmtEUR = n => '€' + usdAEur(n).toFixed(2);
-export const fmtBsTotal = n => 'Bs ' + Math.round(n).toLocaleString('es-VE');
+export const fmtEUR = n => (e.tasaEUR && e.tasaBCV ? '€' + usdAEur(n).toFixed(2) : '€ —');
+export const fmtBsTotal = n => 'Bs ' + bs(n);
 
 export function fmtPrice(n) {
   if (e.moneda === 'usd') return fmtUSD(n);

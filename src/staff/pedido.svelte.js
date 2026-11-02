@@ -1,6 +1,6 @@
 // Pedidos abiertos: lista, pedido en pantalla, consumo y cobro
 import { sb } from '../lib/config.js';
-import { restGet, restPatch } from '../lib/api.js';
+import { restGet } from '../lib/api.js';
 import { e, esDueno } from '../lib/estado.svelte.js';
 import { feedback, sonidoCaja, vibrate } from '../lib/sonidos.js';
 import { showToast, enCurso } from '../lib/avisos.svelte.js';
@@ -79,8 +79,12 @@ export async function cancelarPedido() {
 // dentro de Supabase (función cobrar_pedido): cierra el pedido, registra en caja y
 // descuenta el stock en una sola operación. Si se toca dos veces, la segunda falla
 // con "ya fue cobrado".
-export function abrirCobro() {
+export async function abrirCobro() {
   if (!ped.actual) return;
+  // Releer lo servido: otro teléfono pudo servir algo, y la hoja debe mostrar
+  // exactamente lo que la base va a cobrar
+  const { data: frescos } = await sb.from('pedido_items').select('*').eq('pedido_id', ped.actual.id);
+  if (frescos) ped.actual.pedido_items = frescos;
   if (!items().filter(i => i.consumido > 0).length) { showToast('No hay nada servido para cobrar', 'danger'); return; }
   ped.metodo = '';
   ped.cobroAbierto = true;
@@ -100,6 +104,8 @@ export async function cobrarPedido(nota) {
       return;
     }
     cerrarCobro();
+    // La base cobra con la tasa del día de la sucursal; la de este teléfono queda al día
+    if (parseFloat(data?.tasa_bcv) > 0) e.tasaBCV = parseFloat(data.tasa_bcv);
     sonidoCaja(); showToast(`Cobrado ${fmtUSD(data?.total_usd ?? total)} · ${metodo} ✓`);
     volverALista(); e.seccion = 'caja';
   });
@@ -175,21 +181,17 @@ export async function agregarItemCustom({ tipo, nombre, precio_usd, unidad, cant
 export async function consumir(itemId, delta) {
   const item = items().find(i => i.id === itemId); if (!item) return;
   const n = item.consumido + delta;
-  if (item.tipo === 'combo') {
-    if (n < 0 || n > item.total) return;
-    item.consumido = n;
-    feedback(); checkNotificaciones(ped.actual);
-    const { error } = await sb.from('pedido_items').update({ consumido: n }).eq('id', itemId);
-    if (error) { item.consumido -= delta; showToast(msgError(error, 'No se guardó el cambio'), 'danger'); }
-    return;
-  }
-  if (n < 0) return;
-  if (n === 0) return quitarItem(itemId);
+  if (item.tipo === 'combo' ? (n < 0 || n > item.total) : n < 0) return;
+  if (item.tipo !== 'combo' && n === 0) return quitarItem(itemId);
+  // Se ve al instante; la base suma o resta (función servir), así dos
+  // teléfonos sirviendo a la vez no se pisan. Al volver, manda lo de la base.
   const antes = { consumido: item.consumido, total: item.total };
-  item.consumido = n; item.total = n;
+  item.consumido = n; if (item.tipo !== 'combo') item.total = n;
   feedback();
-  const { error } = await sb.from('pedido_items').update({ consumido: n, total: n }).eq('id', itemId);
-  if (error) { Object.assign(item, antes); showToast(msgError(error, 'No se guardó el cambio'), 'danger'); }
+  if (item.tipo === 'combo') checkNotificaciones(ped.actual);
+  const { data, error } = await sb.rpc('servir', { p_item: itemId, p_delta: delta });
+  if (error) { Object.assign(item, antes); showToast(msgError(error, 'No se guardó el cambio'), 'danger'); return; }
+  if (data) aplicarItems([data]);
 }
 
 export async function reabastecer(itemId) {
@@ -199,8 +201,9 @@ export async function reabastecer(itemId) {
   if (inp === null) return;
   const agregar = parseInt(inp) || 0;
   if (agregar <= 0) return;
-  item.total += agregar;
-  await restPatch('pedido_items', itemId, { total: item.total });
+  const { data, error } = await sb.rpc('sumar_unidades', { p_item: itemId, p_unidades: agregar });
+  if (error) { showToast(msgError(error, 'No se pudieron agregar las unidades'), 'danger'); return; }
+  aplicarItems([data]);
   feedback();
   showToast(`+${agregar} unidades agregadas a ${item.nombre} ✓`);
 }

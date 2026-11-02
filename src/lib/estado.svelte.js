@@ -11,8 +11,9 @@ export const e = $state({
   seccion: 'pedidos',
   pedidoAbierto: false,         // dentro de un pedido la barra de tasas se oculta
   moneda: leer('moneda', 'both'),
-  tasaBCV: parseFloat(leer('tasa')) || 530.50,
-  tasaEUR: parseFloat(leer('tasaEur')) || 580.00,
+  // Sin tasa guardada queda en 0 ("sin tasa"): nunca un valor inventado
+  tasaBCV: parseFloat(leer('tasa')) || 0,
+  tasaEUR: parseFloat(leer('tasaEur')) || 0,
   tasaEstado: { clase: 'loading', icono: 'ti-refresh', texto: 'Cargando...' },
   solicitudes: [],
   versionPedidos: 0,            // sube cuando el tiempo real avisa de cambios en pedidos
