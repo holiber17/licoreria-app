@@ -1,6 +1,6 @@
 {
-  "name": "LicorApp",
-  "short_name": "LicorApp",
+  "name": "LicoApp",
+  "short_name": "LicoApp",
   "description": "Punto de venta, inventario y reportes para licorerías y bodegones",
   "start_url": "./",
   "display": "standalone",

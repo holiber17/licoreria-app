@@ -17,7 +17,7 @@
   import Actividad from './Actividad.svelte';
   import Admin from './Admin.svelte';
 
-  const nombre = $derived(e.sucursal?.app_nombre || e.sucursal?.nombre || 'LicorApp');
+  const nombre = $derived(e.sucursal?.app_nombre || e.sucursal?.nombre || 'LicoApp');
   let logoRoto = $state(false);
 
   // El dueño puede fijar la tasa del día; es la que usa el cobro y la que ve el cliente

@@ -1,4 +1,4 @@
-# LicorApp
+# LicoApp
 
 Punto de venta, inventario y reportes para licorerías y bodegones. Svelte 5 + Vite, Supabase como base de datos.
 

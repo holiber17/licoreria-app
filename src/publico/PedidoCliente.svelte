@@ -63,7 +63,7 @@
     ? (parseFloat(pedido?.tasa_bcv) || 0)
     : (parseFloat(pedido?.tasa_actual) || tasas.usd || parseFloat(pedido?.tasa_bcv) || 0));
   const nombreNegocio = $derived(sucursal ? (sucursal.app_nombre || sucursal.nombre) : '');
-  $effect(() => { document.title = 'Mi pedido — ' + (nombreNegocio || 'LicorApp'); });
+  $effect(() => { document.title = 'Mi pedido — ' + (nombreNegocio || 'LicoApp'); });
   let logoRoto = $state(false);
 
   async function cargarNegocio(sucursalId) {
@@ -399,7 +399,7 @@
     {/if}
   </main>
 
-  <footer class="footer">Se actualiza al instante · <strong>LicorApp</strong></footer>
+  <footer class="footer">Se actualiza al instante · <strong>LicoApp</strong></footer>
 </div>
 
 <Hoja id="hoja-pago" abierto={pagoAbierto} alCerrar={() => (pagoAbierto = false)} titulo="Pagar la cuenta">
