@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { LOGO_URL, clienteAnonimo } from '../lib/config.js';
-  import { anonGet, anonInsert } from '../lib/api.js';
+  import { anonGet, anonInsert, anonRpc } from '../lib/api.js';
   import { ini, etiquetaMesa } from '../lib/catalogo.js';
   import { toastAlerta, esc } from '../lib/avisos.svelte.js';
   import { tasas, fetchTasas, fmtUSD, fmtBs } from './comun.svelte.js';
@@ -25,6 +25,7 @@
   let ahora = $state(Date.now());
   let hasta = $state({ mesonero: lsEspera('mesonero'), pagar: lsEspera('pagar') });
   let tiempoReal = false;
+  let conRpc = true;   // se apaga si la base aún no tiene las funciones públicas
   let anterior = {};
   let permiso = false;
 
@@ -60,11 +61,16 @@
   async function cargarNegocio(sucursalId) {
     if (sucursal || !sucursalId) return;
     const id = encodeURIComponent(sucursalId);
-    // datos_pago existe solo después de correr supabase/cliente.sql
-    let d = await anonGet('sucursales?select=id,nombre,app_nombre,logo_url,datos_pago&id=eq.' + id);
-    if (d === null) d = await anonGet('sucursales?select=id,nombre,app_nombre,logo_url&id=eq.' + id);
-    if (!d || !d[0]) return;
-    sucursal = d[0];
+    let s;
+    if (conRpc) s = (await anonRpc('sucursal_publica', { p: sucursalId })).data;
+    else {
+      // Base sin supabase/acceso_publico.sql: lectura directa (datos_pago viene de supabase/cliente.sql)
+      let d = await anonGet('sucursales?select=id,nombre,app_nombre,logo_url,datos_pago&id=eq.' + id);
+      if (d === null) d = await anonGet('sucursales?select=id,nombre,app_nombre,logo_url&id=eq.' + id);
+      s = d && d[0];
+    }
+    if (!s) return;
+    sucursal = s;
     // Categoría e imagen de cada producto, para mostrar su ícono
     const menu = await anonGet('menu?select=id,nombre,categoria,imagen_url&sucursal_id=eq.' + id);
     const c = {};
@@ -78,12 +84,25 @@
 
   async function loadPedido() {
     if (!pedidoId) return;
-    const data = await anonGet('pedidos?select=*,pedido_items(*)&id=eq.' + encodeURIComponent(pedidoId));
-    if (data === null) { if (!pedido) estado = 'error'; return; }
-    const p = data[0];
+    // Solo este pedido, vía funciones de Supabase (supabase/acceso_publico.sql).
+    // Si la base aún no las tiene (404), se lee como antes.
+    let p;
+    if (conRpc) {
+      const r = await anonRpc('pedido_publico', { p: pedidoId });
+      if (r.status === 404) conRpc = false;
+      else if (!r.ok) { if (!pedido) estado = 'error'; return; }
+      else p = r.data;
+    }
+    if (!conRpc) {
+      const data = await anonGet('pedidos?select=*,pedido_items(*)&id=eq.' + encodeURIComponent(pedidoId));
+      if (data === null) { if (!pedido) estado = 'error'; return; }
+      p = data[0];
+    }
     if (!p) { estado = 'noEncontrado'; return; }
     await cargarNegocio(p.sucursal_id);
-    avisos = (await anonGet('solicitudes?select=id,tipo,estado,created_at,atendida_at&pedido_id=eq.' + encodeURIComponent(pedidoId) + '&order=created_at.desc&limit=10')) || [];
+    avisos = (conRpc
+      ? (await anonRpc('avisos_de_pedido', { p: pedidoId })).data
+      : await anonGet('solicitudes?select=id,tipo,estado,created_at,atendida_at&pedido_id=eq.' + encodeURIComponent(pedidoId) + '&order=created_at.desc&limit=10')) || [];
     avisarSiAtendieron();
     pedido = p; estado = 'ok';
     checkNotifCliente(p.pedido_items || []);
@@ -117,11 +136,17 @@
   async function enviarSolicitud(tipo, metodo, referencia) {
     if (!pedido || pedido.estado !== 'abierto') return false;
     if (enEspera(tipo)) { aviso('ti-clock', 'Ya avisamos al personal.<br>En un momento te atienden.'); return false; }
+    let ok = false;
+    if (conRpc) {
+      const r = await anonRpc('crear_solicitud', { p_pedido: pedido.id, p_tipo: tipo, p_metodo: metodo || null, p_referencia: referencia || null });
+      if (r.status === 404) conRpc = false;
+      ok = r.ok;
+    }
     const base = { sucursal_id: pedido.sucursal_id, pedido_id: pedido.id, tipo, metodo: metodo || null };
-    let ok = await anonInsert('solicitudes', referencia ? { ...base, referencia } : base);
+    if (!conRpc) ok = await anonInsert('solicitudes', referencia ? { ...base, referencia } : base);
     // Si la columna `referencia` aún no existe (supabase/ajustes_mesonero.sql),
     // el aviso se envía igual con la referencia dentro del texto del método.
-    if (!ok && referencia) ok = await anonInsert('solicitudes', { ...base, metodo: ('ref ' + referencia + ' · ' + (metodo || 'Pago')).slice(0, 40) });
+    if (!conRpc && !ok && referencia) ok = await anonInsert('solicitudes', { ...base, metodo: ('ref ' + referencia + ' · ' + (metodo || 'Pago')).slice(0, 40) });
     if (!ok) { aviso('ti-alert-triangle', 'No pudimos enviar el aviso.<br>Por favor llama a un mesonero.'); return false; }
     const t = Date.now();
     try { localStorage.setItem(claveEspera(tipo), String(t)); } catch (err) {}
@@ -234,7 +259,9 @@
     let vueltas = 0;
     const respaldo = setInterval(async () => {
       vueltas++;
-      if (tiempoReal && vueltas % 6 !== 0) return;
+      // Con las funciones públicas el cliente ya no ve las tablas, así que el
+      // tiempo real no le llega nada: se consulta siempre cada 10 s.
+      if (tiempoReal && !conRpc && vueltas % 6 !== 0) return;
       await fetchTasas(); await loadPedido();
     }, 10000);
     const reloj = setInterval(() => { ahora = Date.now(); }, 1000);

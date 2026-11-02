@@ -53,6 +53,18 @@ export async function anonGet(path) {
     return r.ok ? await r.json() : null;
   } catch (e) { return null; }
 }
+// Función de Supabase sin sesión (páginas públicas). Devuelve { ok, status, data }:
+// status 404 = la función aún no existe en la base (supabase/acceso_publico.sql)
+export async function anonRpc(fn, args) {
+  try {
+    const r = await fetch(SUPA_URL + '/rest/v1/rpc/' + fn, {
+      method: 'POST',
+      headers: { apikey: SUPA_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(args),
+    });
+    return { ok: r.ok, status: r.status, data: r.ok ? await r.json() : null };
+  } catch (e) { return { ok: false, status: 0, data: null }; }
+}
 export async function anonInsert(tabla, datos) {
   try {
     const r = await fetch(SUPA_URL + '/rest/v1/' + tabla, {

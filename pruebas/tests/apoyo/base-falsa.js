@@ -59,6 +59,30 @@ class BaseFalsa {
 
   rpc(fn, b) {
     const db = this.db;
+    // Funciones públicas (supabase/acceso_publico.sql). Una base sin migrar no las tiene.
+    const PUBLICAS = ['pedido_publico', 'avisos_de_pedido', 'sucursal_publica', 'crear_solicitud'];
+    if (PUBLICAS.includes(fn) && (this.sinColumnas || []).length) return { status: 404, json: { message: 'function not found' } };
+    if (fn === 'pedido_publico') {
+      const p = db.pedidos.find(x => x.id === b.p);
+      if (!p) return { json: null };
+      const { nota, usuario_id, cliente_id, ...pub } = p;
+      return { json: { mesa: null, ...pub, pedido_items: db.pedido_items.filter(i => i.pedido_id === p.id) } };
+    }
+    if (fn === 'avisos_de_pedido') {
+      return { json: db.solicitudes.filter(s => s.pedido_id === b.p).slice().reverse().slice(0, 10).map(({ id, tipo, estado, created_at, atendida_at }) => ({ id, tipo, estado, created_at, atendida_at })) };
+    }
+    if (fn === 'sucursal_publica') {
+      const s = db.sucursales.find(x => x.id === b.p);
+      return { json: s ? { id: s.id, nombre: s.nombre, app_nombre: s.app_nombre, logo_url: s.logo_url, ciudad: s.ciudad, direccion: s.direccion, datos_pago: s.datos_pago } : null };
+    }
+    if (fn === 'crear_solicitud') {
+      const p = db.pedidos.find(x => x.id === b.p_pedido && x.estado === 'abierto');
+      if (!p) return { status: 400, json: { message: 'Este pedido ya no está abierto' } };
+      if (db.solicitudes.some(s => s.pedido_id === p.id && s.tipo === b.p_tipo && s.estado === 'pendiente')) return { status: 400, json: { message: 'Ya avisamos al personal' } };
+      const s = { id: this.id('s'), sucursal_id: p.sucursal_id, pedido_id: p.id, tipo: b.p_tipo, metodo: b.p_metodo, referencia: b.p_referencia, estado: 'pendiente', created_at: new Date().toISOString() };
+      db.solicitudes.push(s);
+      return { json: s.id };
+    }
     if (fn === 'agregar_al_pedido') {
       const p = db.pedidos.find(x => x.id === b.p_pedido);
       if (!p || p.estado !== 'abierto') return { status: 400, json: { message: 'Este pedido ya está cerrado' } };

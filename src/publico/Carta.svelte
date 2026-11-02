@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { anonGet } from '../lib/api.js';
+  import { anonGet, anonRpc } from '../lib/api.js';
   import { ordenarMenu, getCatIcon, categoriasDe } from '../lib/catalogo.js';
   import { tasas, fetchTasas, fmtUSD, fmtBs, fmtEUR } from './comun.svelte.js';
   import ProdImg from '../ui/ProdImg.svelte';
@@ -33,7 +33,10 @@
     if (!sucursalId) { estado = 'sinEnlace'; return; }
     const id = encodeURIComponent(sucursalId);
     const [suc, menu, inv] = await Promise.all([
-      anonGet('sucursales?select=nombre,app_nombre,logo_url,ciudad,direccion&id=eq.' + id),
+      // Solo esta sucursal (supabase/acceso_publico.sql); si la función aún no existe, lectura directa
+      anonRpc('sucursal_publica', { p: sucursalId }).then(r => r.status === 404
+        ? anonGet('sucursales?select=nombre,app_nombre,logo_url,ciudad,direccion&id=eq.' + id)
+        : (r.data ? [r.data] : [])),
       anonGet('menu?select=id,nombre,tipo,precio_usd,unidad,categoria,unidades_combo,imagen_url&sucursal_id=eq.' + id + '&activo=eq.true&order=categoria,nombre'),
       anonGet('inventario?select=nombre,stock_actual&sucursal_id=eq.' + id),
       fetchTasas(),

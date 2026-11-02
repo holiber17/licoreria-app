@@ -103,3 +103,14 @@ test('sin la columna referencia en la base: la referencia llega al inicio del m�
   expect(base.db.solicitudes[0].metodo.startsWith('ref 0102030405060708 · ')).toBe(true);
   expect(base.db.solicitudes[0].metodo.length).toBeLessThanOrEqual(40);
 });
+
+test('la página del pedido no lee las tablas directamente: usa las funciones públicas', async ({ page }) => {
+  await page.goto('http://app.test/pedido.html?id=p1');
+  await expect(page.locator('.cliente-nombre')).toBeVisible();
+  await page.click('text=Llamar al mesonero');
+  await expect.poll(() => base.db.solicitudes.length).toBe(1);
+  const directas = base.llamadas.filter(l => ['pedidos', 'pedido_items', 'solicitudes', 'sucursales'].includes(l.tabla));
+  expect(directas).toEqual([]);
+  expect(base.rpcs('pedido_publico').length).toBeGreaterThan(0);
+  expect(base.rpcs('crear_solicitud').length).toBe(1);
+});
