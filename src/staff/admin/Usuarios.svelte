@@ -4,6 +4,7 @@
   import { ini, plural } from '../../lib/catalogo.js';
   import { showToast } from '../../lib/avisos.svelte.js';
   import Vacio from '../../ui/Vacio.svelte';
+  import { presencia } from '../presencia.svelte.js';
 
   let usuarios = $state([]), sucursales = $state([]);
   let elegida = $state({});     // id de usuario pendiente -> sucursal elegida
@@ -19,6 +20,11 @@
 
   const pendientes = $derived(usuarios.filter(u => !u.sucursal_id));
   const activos = $derived(usuarios.filter(u => u.sucursal_id));
+  // Quién tiene la app abierta ahora, y en qué sucursal está trabajando
+  const enLinea = id => presencia.enLinea[id];
+  const nombreSucursal = id => sucursales.find(s => s.id === id)?.nombre || '';
+  // Tú siempre estás: el resumen cuenta a los demás
+  const cuantosEnLinea = $derived(usuarios.filter(u => u.id !== e.user?.id && enLinea(u.id)).length);
 
   async function activar(id) {
     const sucId = elegida[id];
@@ -32,6 +38,10 @@
 
 <div id="amt-usuarios">
   <div class="top-bar"><h2>Usuarios</h2></div>
+  <p class="en-linea-resumen" id="en-linea-resumen">
+    <span class="punto-linea" class:apagado={!cuantosEnLinea}></span>
+    {cuantosEnLinea ? `${cuantosEnLinea} ${plural(cuantosEnLinea, 'persona')} más con la app abierta ahora` : 'Nadie más tiene la app abierta ahora'}
+  </p>
   {#if pendientes.length}
     <div id="pending-banner" class="banner aviso" style="display:flex">
       <i class="ti ti-clock"></i>
@@ -43,12 +53,14 @@
       <Vacio icono="ti-users">Sin usuarios registrados.</Vacio>
     {:else}
       {#each [...pendientes.map(u => [u, true]), ...activos.map(u => [u, false])] as [u, pendiente] (u.id)}
+        {@const linea = enLinea(u.id)}
         <div class="user-card" class:pending={pendiente}>
           <div class="fila">
-            <div class="avatar">{ini(u.nombre || u.id)}</div>
+            <div class="avatar con-punto">{ini(u.nombre || u.id)}{#if linea}<span class="punto-linea" title="En línea"></span>{/if}</div>
             <div class="crece">
               <div class="t-fuerte recorta">{u.nombre || 'Sin nombre'}</div>
               <div class="t-sub">{#if u.sucursales?.nombre}{u.sucursales.nombre}{:else}<span class="t-aviso">Sin sucursal asignada</span>{/if}</div>
+              {#if linea}<div class="t-en-linea">En línea ahora{nombreSucursal(linea.sucursal_id) ? ' · en ' + nombreSucursal(linea.sucursal_id) : ''}</div>{/if}
             </div>
             <span class="pill {u.rol || 'empleado'}">{u.rol === 'dueno' ? 'Dueño' : u.rol === 'empleado' ? 'Empleado' : 'Pendiente'}</span>
           </div>
