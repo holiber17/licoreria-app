@@ -3,7 +3,7 @@
   import { restGet } from '../lib/api.js';
   import { ped, cargarLista, crearPedido, abrirPedido, volverALista, abrirCobro } from './pedido.svelte.js';
   import { atenderSolicitud, avisosDePedido, SOL_TIPOS } from './solicitudes.svelte.js';
-  import { ini, plural, fmtHora, hace } from '../lib/catalogo.js';
+  import { ini, plural, fmtHora, hace, etiquetaMesa, nombreConMesa } from '../lib/catalogo.js';
   import { totalDe } from '../lib/formato.svelte.js';
   import Dual from '../ui/Dual.svelte';
   import Vacio from '../ui/Vacio.svelte';
@@ -17,6 +17,7 @@
   let busqueda = $state('');
   let formNuevo = $state(false);
   let nombreNuevo = $state('');
+  let mesaNueva = $state('');
   let clientes = $state([]);
   let qrAbierto = $state(false);
   let pdfAbierto = $state(false);
@@ -30,7 +31,7 @@
   });
   $effect(() => { e.pedidoAbierto = !!ped.actual; });
 
-  const filtrados = $derived(ped.lista.filter(p => p.cliente_nombre.toLowerCase().includes(busqueda.toLowerCase())));
+  const filtrados = $derived(ped.lista.filter(p => nombreConMesa(p).toLowerCase().includes(busqueda.toLowerCase())));
   const sugeridos = $derived.by(() => {
     const q = nombreNuevo.trim().toLowerCase();
     if (q.length < 2) return [];
@@ -47,7 +48,7 @@
   async function crear() {
     const n = nombreNuevo.trim();
     if (!n) { alert('Escribe un nombre'); return; }
-    if (await crearPedido(n)) { nombreNuevo = ''; formNuevo = false; }
+    if (await crearPedido(n, mesaNueva.trim())) { nombreNuevo = ''; mesaNueva = ''; formNuevo = false; }
   }
   const tabs = [['consumo', 'ti-glass', 'Consumo'], ['agregar', 'ti-plus', 'Agregar'], ['cuenta', 'ti-receipt', 'Cuenta']];
 </script>
@@ -63,8 +64,8 @@
             <i class="ti {t.icono} sol-icono"></i>
             <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
             <div class="crece" onclick={() => abrirPedido(s.pedido_id)}>
-              <div class="t-fuerte recorta">{s.pedidos?.cliente_nombre || 'Pedido'}</div>
-              <div class="t-sub">{t.texto}{s.metodo ? ' · ' + s.metodo : ''} · {hace(s.created_at)}</div>
+              <div class="t-fuerte recorta">{s.pedidos ? nombreConMesa(s.pedidos) : 'Pedido'}</div>
+              <div class="t-sub">{t.texto}{s.metodo ? ' · ' + s.metodo : ''}{#if s.referencia} · <strong>ref {s.referencia}</strong>{/if} · {hace(s.created_at)}</div>
             </div>
             <button class="btn sm success" onclick={() => atenderSolicitud(s.id)}><i class="ti ti-check"></i> Atendido</button>
           </div>
@@ -78,8 +79,8 @@
     </div>
     {#if formNuevo}
       <div id="form-nuevo" class="af">
-        <div class="fg"><label for="nuevo-nombre">Nombre del cliente, grupo o mesa</label>
-          <input id="nuevo-nombre" placeholder="Ej: Carlos, Mesa 4..." autocomplete="off" bind:value={nombreNuevo} onkeydown={ev => ev.key === 'Enter' && crear()} />
+        <div class="fg"><label for="nuevo-nombre">Nombre del cliente o grupo</label>
+          <input id="nuevo-nombre" placeholder="Ej: Carlos, Cumpleaños de Ana..." autocomplete="off" bind:value={nombreNuevo} onkeydown={ev => ev.key === 'Enter' && crear()} />
         </div>
         {#if sugeridos.length}
           <div id="cliente-sugeridos" class="sugerencias" style="display:block">
@@ -92,6 +93,9 @@
             {/each}
           </div>
         {/if}
+        <div class="fg"><label for="nuevo-mesa">Mesa (opcional)</label>
+          <input id="nuevo-mesa" placeholder="Ej: 4, Barra, Terraza 2" maxlength="30" autocomplete="off" bind:value={mesaNueva} onkeydown={ev => ev.key === 'Enter' && crear()} />
+        </div>
         <div class="fa">
           <button class="btn sm ghost" onclick={alternarNuevo}>Cancelar</button>
           <button class="btn sm primary" onclick={crear}><i class="ti ti-check"></i> Abrir pedido</button>
@@ -117,6 +121,7 @@
               <div class="fila">
                 <div class="avatar sm">{ini(p.cliente_nombre)}</div>
                 <span class="nombre recorta crece">{p.cliente_nombre}</span>
+                {#if etiquetaMesa(p)}<span class="aviso-tarjeta"><i class="ti ti-armchair"></i> {etiquetaMesa(p)}</span>{/if}
               </div>
               <div class="pedido-total"><Dual n={totalDe(its)} /></div>
               <div class="t-mini mt-s"><i class="ti ti-clock"></i> {fmtHora(p.created_at)} · {its.length} {plural(its.length, 'ítem')}</div>
@@ -136,7 +141,7 @@
       <div class="det-cab">
         <div id="det-avatar" class="avatar">{ini(ped.actual.cliente_nombre)}</div>
         <div class="crece">
-          <div id="det-nombre" class="det-nombre recorta">{ped.actual.cliente_nombre}</div>
+          <div id="det-nombre" class="det-nombre recorta">{nombreConMesa(ped.actual)}</div>
           <div class="t-sub">Pedido abierto · <span id="det-tasa">BCV {e.tasaBCV.toFixed(2)}</span></div>
         </div>
         <button class="btn sm" onclick={() => (qrAbierto = true)} title="Compartir QR con el cliente"><i class="ti ti-qrcode"></i> QR</button>

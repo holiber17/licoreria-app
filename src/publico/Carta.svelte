@@ -34,7 +34,7 @@
     const id = encodeURIComponent(sucursalId);
     const [suc, menu, inv] = await Promise.all([
       anonGet('sucursales?select=nombre,app_nombre,logo_url,ciudad,direccion&id=eq.' + id),
-      anonGet('menu?select=nombre,tipo,precio_usd,unidad,categoria,unidades_combo,imagen_url&sucursal_id=eq.' + id + '&activo=eq.true&order=categoria,nombre'),
+      anonGet('menu?select=id,nombre,tipo,precio_usd,unidad,categoria,unidades_combo,imagen_url&sucursal_id=eq.' + id + '&activo=eq.true&order=categoria,nombre'),
       anonGet('inventario?select=nombre,stock_actual&sucursal_id=eq.' + id),
       fetchTasas(),
     ]);
@@ -100,7 +100,7 @@
           <section>
             <div class="slabel">{getCatIcon(c)} {c}</div>
             <div class="carta-grid">
-              {#each lista.filter(p => (p.categoria || 'General') === c) as p (p.nombre)}
+              {#each lista.filter(p => (p.categoria || 'General') === c) as p (p.id)}
                 {@const agotado = agotados.has(p.nombre.toLowerCase())}
                 <article class="carta-item" class:agotado>
                   <div class="carta-foto"><ProdImg item={p} tam="carta" />{#if agotado}<span class="carta-agotado">Agotado</span>{/if}</div>

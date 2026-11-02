@@ -93,7 +93,7 @@
     <div class="ch"><i class="ti ti-trending-up"></i> Tasa BCV — historial</div>
     <div id="rep-tasa-list">
       {#if !tasas.length}<Nota>Sin historial de tasas aún.</Nota>
-      {:else}{#each tasas as t (t.fecha)}
+      {:else}{#each tasas as t (t.id)}
         <div class="res-row">
           <span>{new Date(t.fecha + 'T12:00:00').toLocaleDateString('es-VE', { weekday: 'short', day: '2-digit', month: '2-digit' })}</span>
           <span class="t-fuerte">Bs {parseFloat(t.tasa).toFixed(2)}/$</span>

@@ -38,7 +38,7 @@
   }
 
   function editar(m) {
-    ed = { id: m.id, tipo: m.tipo, nombre: m.nombre, total: m.unidades_combo || 1, precio: m.precio_usd, unidad: m.unidad, cat: m.categoria || '', imagen: m.imagen_url || '' };
+    ed = { id: m.id, tipo: m.tipo, nombre: m.nombre, total: m.unidades_combo || 1, precio: m.precio_usd, unidad: m.unidad || '', cat: m.categoria || '', imagen: m.imagen_url || '' };
   }
   async function guardarEdicion() {
     const nombre = ed.nombre.trim();

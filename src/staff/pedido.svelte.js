@@ -1,7 +1,7 @@
 // Pedidos abiertos: lista, pedido en pantalla, consumo y cobro
 import { sb } from '../lib/config.js';
 import { restGet, restPatch } from '../lib/api.js';
-import { e } from '../lib/estado.svelte.js';
+import { e, esDueno } from '../lib/estado.svelte.js';
 import { feedback, sonidoCaja, vibrate } from '../lib/sonidos.js';
 import { showToast, enCurso } from '../lib/avisos.svelte.js';
 import { msgError, plural } from '../lib/catalogo.js';
@@ -26,8 +26,12 @@ export async function cargarLista() {
   ped.lista = data || [];
 }
 
-export async function crearPedido(nombre) {
-  const { data, error } = await sb.from('pedidos').insert({ sucursal_id: e.sucursal.id, usuario_id: e.user.id, cliente_nombre: nombre, estado: 'abierto', tasa_bcv: e.tasaBCV }).select().single();
+export async function crearPedido(nombre, mesa = '') {
+  const datos = { sucursal_id: e.sucursal.id, usuario_id: e.user.id, cliente_nombre: nombre, estado: 'abierto', tasa_bcv: e.tasaBCV };
+  let { data, error } = await sb.from('pedidos').insert(mesa ? { ...datos, mesa } : datos).select().single();
+  // Si la columna `mesa` aún no existe en Supabase (supabase/ajustes_mesonero.sql),
+  // el pedido se crea igual y la mesa se guarda dentro del nombre.
+  if (error && mesa) ({ data, error } = await sb.from('pedidos').insert({ ...datos, cliente_nombre: nombre + ' · Mesa ' + mesa }).select().single());
   if (error) { showToast('Error al crear pedido', 'danger'); return false; }
   await abrirPedido(data.id);
   return true;
@@ -45,8 +49,28 @@ export function volverALista() { ped.actual = null; ped.seleccion = {}; cargarLi
 
 export async function cancelarPedido() {
   if (!ped.actual) return;
-  if (!confirm('¿Cancelar el pedido sin cobrar?')) return;
-  await sb.from('pedidos').update({ estado: 'cancelado' }).eq('id', ped.actual.id);
+  // Releer lo servido: otro teléfono pudo servir algo desde que se abrió el pedido
+  const { data: frescos } = await sb.from('pedido_items').select('*').eq('pedido_id', ped.actual.id);
+  if (frescos) ped.actual.pedido_items = frescos;
+  // Si ya hay consumo, el aviso dice cuánto dinero se deja de cobrar
+  const consumo = items().reduce((s, i) => s + i.consumido * i.precio_usd, 0);
+  // Con consumo servido, cancelar es dinero que no entra: solo el dueño.
+  // (La base de datos también lo exige: supabase/ajustes_mesonero.sql)
+  if (consumo > 0 && !esDueno()) {
+    showToast('Ya hay consumo servido: solo el dueño puede cancelar este pedido. Cóbralo o avísale al dueño.', 'danger');
+    return;
+  }
+  const pregunta = consumo > 0 ? `Este pedido tiene ${fmtUSD(consumo)} consumidos. ¿Cancelarlo SIN cobrar?` : '¿Cancelar el pedido sin cobrar?';
+  if (!confirm(pregunta)) return;
+  // Queda escrito quién lo canceló y cuándo, para que el dueño pueda revisarlo
+  const quien = e.perfil?.nombre || e.user?.email || 'usuario';
+  const cuando = new Date().toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short' });
+  const prev = String(ped.actual.nota || '').trim();
+  const nota = (prev ? prev + ' · ' : '') + `Cancelado por ${quien} (${cuando})` + (consumo > 0 ? ` · consumo ${fmtUSD(consumo)}` : '');
+  const { data: cancelados, error } = await sb.from('pedidos').update({ estado: 'cancelado', nota }).eq('id', ped.actual.id).eq('estado', 'abierto').select('id');
+  if (error) { showToast(msgError(error, 'No se pudo cancelar el pedido'), 'danger'); return; }
+  // Sin filas: el pedido ya no estaba abierto (se cobró o canceló desde otro teléfono)
+  if (!cancelados?.length) showToast('Este pedido ya no estaba abierto: no se canceló', 'danger');
   volverALista();
 }
 
@@ -183,7 +207,8 @@ export async function reabastecer(itemId) {
 
 export async function quitarItem(itemId) {
   const item = items().find(i => i.id === itemId);
-  if (item && item.tipo === 'combo' && item.consumido > 0 && !confirm(`¿Quitar "${item.nombre}" de la cuenta? Ya se sirvieron ${item.consumido}.`)) return;
+  // Quitar algo ya servido (combo o suelto) cambia el total a cobrar: pedir confirmación
+  if (item && item.consumido > 0 && !confirm(`¿Quitar "${item.nombre}" de la cuenta? Ya se sirvieron ${item.consumido}.`)) return;
   const { error } = await sb.from('pedido_items').delete().eq('id', itemId);
   if (error) { showToast(msgError(error, 'No se pudo quitar'), 'danger'); return; }
   ped.actual.pedido_items = items().filter(i => i.id !== itemId);

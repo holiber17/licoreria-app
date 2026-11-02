@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { LOGO_URL, clienteAnonimo } from '../lib/config.js';
   import { anonGet, anonInsert } from '../lib/api.js';
-  import { ini } from '../lib/catalogo.js';
+  import { ini, etiquetaMesa } from '../lib/catalogo.js';
   import { toastAlerta, esc } from '../lib/avisos.svelte.js';
   import { tasas, fetchTasas, fmtUSD, fmtBs } from './comun.svelte.js';
   import ProdImg from '../ui/ProdImg.svelte';
@@ -21,6 +21,7 @@
   let pagoAbierto = $state(false);
   let partes = $state(1);
   let metodoElegido = $state('');
+  let referenciaPago = $state('');  // referencia del pago que escribe el cliente (opcional)
   let ahora = $state(Date.now());
   let hasta = $state({ mesonero: lsEspera('mesonero'), pagar: lsEspera('pagar') });
   let tiempoReal = false;
@@ -113,10 +114,14 @@
   function aviso(icono, html, ms = 4000) { toastAlerta(html, ms, icono, true); }
 
   // ---- Solicitudes al personal ----
-  async function enviarSolicitud(tipo, metodo) {
+  async function enviarSolicitud(tipo, metodo, referencia) {
     if (!pedido || pedido.estado !== 'abierto') return false;
     if (enEspera(tipo)) { aviso('ti-clock', 'Ya avisamos al personal.<br>En un momento te atienden.'); return false; }
-    const ok = await anonInsert('solicitudes', { sucursal_id: pedido.sucursal_id, pedido_id: pedido.id, tipo, metodo: metodo || null });
+    const base = { sucursal_id: pedido.sucursal_id, pedido_id: pedido.id, tipo, metodo: metodo || null };
+    let ok = await anonInsert('solicitudes', referencia ? { ...base, referencia } : base);
+    // Si la columna `referencia` aún no existe (supabase/ajustes_mesonero.sql),
+    // el aviso se envía igual con la referencia dentro del texto del método.
+    if (!ok && referencia) ok = await anonInsert('solicitudes', { ...base, metodo: ('ref ' + referencia + ' · ' + (metodo || 'Pago')).slice(0, 40) });
     if (!ok) { aviso('ti-alert-triangle', 'No pudimos enviar el aviso.<br>Por favor llama a un mesonero.'); return false; }
     const t = Date.now();
     try { localStorage.setItem(claveEspera(tipo), String(t)); } catch (err) {}
@@ -149,11 +154,13 @@
   const metodo = $derived(METODOS.find(x => x.clave === metodoElegido) || METODOS[3]);
   const datosMetodo = $derived((sucursal?.datos_pago || {})[metodo.clave] || {});
   const camposConDatos = $derived(metodo.campos.filter(([k]) => String(datosMetodo[k] || '').trim()));
+  const limpiarReferencia = v => String(v || '').replace(/[^A-Za-z0-9-]/g, '').slice(0, 20);
   let enviandoPago = $state(false);
   async function avisarPago() {
     enviandoPago = true;
     const detalle = (metodo?.nombre || '') + (partes > 1 ? ` · entre ${partes}` : '');
-    if (await enviarSolicitud('pagar', detalle)) {
+    const ref = metodo.clave !== 'efectivo' ? limpiarReferencia(referenciaPago) : '';
+    if (await enviarSolicitud('pagar', detalle, ref)) {
       aviso('ti-wallet', '¡Listo! Ya le avisamos al personal.<br>En un momento confirman tu pago.');
       loadPedido();
     }
@@ -262,7 +269,7 @@
       <div class="cliente-header">
         <div class="avatar lg">{ini(pedido.cliente_nombre)}</div>
         <div class="cliente-nombre">{pedido.cliente_nombre}</div>
-        <div class="cliente-sub">{abierto ? 'Pedido activo' : 'Pedido cerrado'}</div>
+        <div class="cliente-sub">{etiquetaMesa(pedido) ? etiquetaMesa(pedido) + ' · ' : ''}{abierto ? 'Pedido activo' : 'Pedido cerrado'}</div>
       </div>
 
       {#if cobrado}
@@ -362,8 +369,13 @@
       <p class="t-sub mt-m">Paga en efectivo directamente al personal. Avísales para que te traigan la cuenta.</p>
     {/if}
 
+    {#if metodo.clave !== 'efectivo'}
+      <div class="fg mt-m"><label for="ref-pago">Referencia del pago (opcional)</label>
+        <input id="ref-pago" inputmode="numeric" maxlength="20" autocomplete="off" placeholder="Número de referencia o últimos dígitos" bind:value={referenciaPago} /></div>
+      <p class="t-mini">Si ya pagaste, escríbela y el mesonero verifica más rápido.</p>
+    {/if}
     <button class="btn primary full grande mt-m" id="btn-avisar-pago" disabled={enEspera('pagar') || enviandoPago} onclick={avisarPago}>
-      {#if enEspera('pagar')}<i class="ti ti-check"></i> Ya avisamos al personal{:else}<i class="ti ti-send"></i> Avisar que voy a pagar{/if}
+      {#if enEspera('pagar')}<i class="ti ti-check"></i> Ya avisamos al personal{:else}<i class="ti ti-send"></i> Avisar mi pago{/if}
     </button>
     <p class="t-mini mt-s" style="text-align:center">Un mesonero confirmará tu pago antes de cerrar la cuenta.</p>
   </div>

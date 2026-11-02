@@ -5,7 +5,7 @@ import { rest, restPatch } from '../lib/api.js';
 import { e } from '../lib/estado.svelte.js';
 import { sonidoAlerta, feedback } from '../lib/sonidos.js';
 import { toastAlerta, showToast, esc } from '../lib/avisos.svelte.js';
-import { hace } from '../lib/catalogo.js';
+import { hace, nombreConMesa } from '../lib/catalogo.js';
 import { puedeNotificar } from './notificaciones.js';
 
 export const SOL_TIPOS = {
@@ -15,6 +15,7 @@ export const SOL_TIPOS = {
 
 let vistas = new Set();
 let activas = true;   // se apaga si la tabla aún no existe
+let conMesa = true;   // se apaga si la columna pedidos.mesa aún no existe
 let primera = true;
 let timer = null;
 let canal = null;
@@ -63,8 +64,10 @@ export function reiniciarSolicitudes() {
 export async function cargarSolicitudes() {
   if (!activas || !e.sucursal) return;
   let r;
-  try { r = await rest('solicitudes?select=*,pedidos(cliente_nombre)&sucursal_id=eq.' + e.sucursal.id + '&estado=eq.pendiente&order=created_at.asc'); }
+  try { r = await rest('solicitudes?select=*,pedidos(' + (conMesa ? 'cliente_nombre,mesa' : 'cliente_nombre') + ')&sucursal_id=eq.' + e.sucursal.id + '&estado=eq.pendiente&order=created_at.asc'); }
   catch (err) { return; }
+  // 400 pidiendo la mesa: la columna aún no existe (supabase/ajustes_mesonero.sql). Seguir sin ella.
+  if (r.status === 400 && conMesa) { conMesa = false; return cargarSolicitudes(); }
   // 404/400: la tabla todavía no se creó en Supabase. No insistir.
   if (r.status === 404 || r.status === 400) { activas = false; e.solicitudes = []; return; }
   if (!r.ok) return;
@@ -81,10 +84,10 @@ function avisar(nuevas) {
   if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
   const s = nuevas[nuevas.length - 1];
   const t = SOL_TIPOS[s.tipo] || SOL_TIPOS.mesonero;
-  const quien = s.pedidos?.cliente_nombre || 'Un cliente';
-  toastAlerta(`<strong>${esc(quien)}</strong><br>${t.texto}${s.metodo ? ' · ' + esc(s.metodo) : ''}${nuevas.length > 1 ? `<br><span class="t-mini">y ${nuevas.length - 1} aviso(s) más</span>` : ''}`, 7000);
+  const quien = s.pedidos ? nombreConMesa(s.pedidos) : 'Un cliente';
+  toastAlerta(`<strong>${esc(quien)}</strong><br>${t.texto}${s.metodo ? ' · ' + esc(s.metodo) : ''}${s.referencia ? ' · ref ' + esc(s.referencia) : ''}${nuevas.length > 1 ? `<br><span class="t-mini">y ${nuevas.length - 1} aviso(s) más</span>` : ''}`, 7000);
   if (puedeNotificar()) {
-    new Notification((s.tipo === 'pagar' ? '💳 ' : '🔔 ') + quien, { body: t.texto + (s.metodo ? ' · ' + s.metodo : ''), icon: LOGO_URL, tag: 'sol_' + s.id });
+    new Notification((s.tipo === 'pagar' ? '💳 ' : '🔔 ') + quien, { body: t.texto + (s.metodo ? ' · ' + s.metodo : '') + (s.referencia ? ' · ref ' + s.referencia : ''), icon: LOGO_URL, tag: 'sol_' + s.id });
   }
 }
 

@@ -52,7 +52,7 @@ class BaseFalsa {
     return filas.map(r => {
       const o = { ...r };
       if (t === 'pedidos' && sel.includes('pedido_items')) o.pedido_items = this.db.pedido_items.filter(i => i.pedido_id === r.id);
-      if (t === 'solicitudes' && sel.includes('pedidos(')) o.pedidos = { cliente_nombre: this.db.pedidos.find(p => p.id === r.pedido_id)?.cliente_nombre };
+      if (t === 'solicitudes' && sel.includes('pedidos(')) { const p = this.db.pedidos.find(x => x.id === r.pedido_id); o.pedidos = { cliente_nombre: p?.cliente_nombre, mesa: p?.mesa ?? null }; }
       return o;
     });
   }
@@ -103,6 +103,10 @@ class BaseFalsa {
     const body = req.postData() ? JSON.parse(req.postData()) : null;
     this.llamadas.push({ metodo, tabla: t, body });
     if (t.startsWith('rpc/')) return this.rpc(t.slice(4), body);
+    // Simula una base sin migrar: pedir o escribir una de estas columnas da 400
+    const faltan = this.sinColumnas || [];
+    const pide = c => (sp.get('select') || '').split(/[,()]/).includes(c) || (body && (Array.isArray(body) ? body : [body]).some(x => c in x));
+    if (faltan.some(pide)) return { status: 400, json: { message: 'column does not exist' } };
     const db = this.db;
     if (!db[t]) return { json: unico ? {} : [] };
     if (metodo === 'GET') {

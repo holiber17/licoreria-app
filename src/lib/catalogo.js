@@ -20,6 +20,10 @@ export function ordenarMenu(lista) {
 export const categoriasDe = lista => [...new Set(lista.map(m => m.categoria || 'General'))];
 
 export const ini = n => (n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0].toUpperCase()).join('');
+
+// "Carlos · Mesa 4": el nombre y la mesa se guardan por separado
+export const etiquetaMesa = p => { const m = String(p?.mesa || '').trim(); return m ? 'Mesa ' + m.replace(/^mesa\s+/i, '') : ''; };
+export const nombreConMesa = p => { const m = etiquetaMesa(p); return (p?.cliente_nombre || '') + (m ? ' · ' + m : ''); };
 export const plural = (n, s, p) => (n === 1 ? s : (p || s + 's'));
 export const fmtUSD = n => '$' + (+n || 0).toFixed(2);
 export const fmtHora = d => new Date(d).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
