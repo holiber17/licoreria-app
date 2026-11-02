@@ -15,8 +15,6 @@ export const SOL_TIPOS = {
 };
 
 let vistas = new Set();
-let activas = true;   // se apaga si la tabla aún no existe
-let conMesa = true;   // se apaga si la columna pedidos.mesa aún no existe
 let primera = true;
 let timer = null;
 let canal = null;
@@ -64,14 +62,10 @@ export function reiniciarSolicitudes() {
 }
 
 export async function cargarSolicitudes() {
-  if (!activas || !e.sucursal) return;
+  if (!e.sucursal) return;
   let r;
-  try { r = await rest('solicitudes?select=*,pedidos(' + (conMesa ? 'cliente_nombre,mesa' : 'cliente_nombre') + ')&sucursal_id=eq.' + e.sucursal.id + '&estado=eq.pendiente&order=created_at.asc'); }
+  try { r = await rest('solicitudes?select=*,pedidos(cliente_nombre,mesa)&sucursal_id=eq.' + e.sucursal.id + '&estado=eq.pendiente&order=created_at.asc'); }
   catch (err) { return; }
-  // 400 pidiendo la mesa: la columna aún no existe (supabase/ajustes_mesonero.sql). Seguir sin ella.
-  if (r.status === 400 && conMesa) { conMesa = false; return cargarSolicitudes(); }
-  // 404/400: la tabla todavía no se creó en Supabase. No insistir.
-  if (r.status === 404 || r.status === 400) { activas = false; e.solicitudes = []; return; }
   if (!r.ok) return;
   const lista = await r.json();
   const nuevas = lista.filter(s => !vistas.has(s.id));

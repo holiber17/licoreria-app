@@ -92,18 +92,6 @@ test('carta pública: categorías, filtro y precios en Bs', async ({ page }) => 
   await expect(page.locator('.carta-precio').first()).toContainText('Bs');
 });
 
-test('sin la columna referencia en la base: la referencia llega al inicio del método', async ({ page }) => {
-  base.sinColumnas = ['referencia'];
-  await page.goto('http://app.test/pedido.html?id=p1');
-  await page.click('text=Quiero pagar');
-  await page.click('[aria-label="Más personas"]');
-  await page.fill('#ref-pago', '0102030405060708');
-  await page.click('#btn-avisar-pago');
-  await expect.poll(() => base.db.solicitudes.length).toBe(1);
-  expect(base.db.solicitudes[0].metodo.startsWith('ref 0102030405060708 · ')).toBe(true);
-  expect(base.db.solicitudes[0].metodo.length).toBeLessThanOrEqual(40);
-});
-
 test('la página del pedido no lee las tablas directamente: usa las funciones públicas', async ({ page }) => {
   await page.goto('http://app.test/pedido.html?id=p1');
   await expect(page.locator('.cliente-nombre')).toBeVisible();

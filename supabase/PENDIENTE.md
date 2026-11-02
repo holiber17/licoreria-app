@@ -10,16 +10,10 @@ Estado al 2 de noviembre de 2026. Todo está probado en un Postgres local con
 | `acceso_publico.sql` (fase 1: funciones públicas, columnas `mesa` y `referencia`, restricciones de `pedido_items`, `pedido_ajustes`) | `acceso_publico_fase1` |
 | `dinero.sql` (servir, sumar_unidades, cobro con la tasa del día) | `dinero` |
 | `turnos.sql` (cierre de caja por turno; aplicado el 2 de noviembre de 2026) | `turnos` |
+| `cierre_publico.sql` (sin lectura pública directa; solo el dueño cancela con consumo; aplicado el 2 de noviembre de 2026, después de publicar la versión Svelte) | `cierre_publico` |
 
-## Falta
-
-1. **Publicar la versión Svelte** en Netlify (fusionar los PR a `main`).
-2. **`cierre_publico.sql`** — solo después del paso 1. Quita la lectura
-   pública directa de pedidos, avisos y sucursales, y hace que la base
-   exija "solo el dueño cancela con consumo".
-3. Con el paso 2 hecho, se puede borrar de la app el código de
-   compatibilidad con la base vieja (`conRpc`, `conMesa`, la mesa dentro
-   del nombre y la referencia dentro del método).
+Ya no falta SQL. El código de compatibilidad con la base vieja se quitó de
+la app: las páginas públicas solo usan las funciones públicas.
 
 ## Fuera del SQL (en el panel de Supabase)
 
