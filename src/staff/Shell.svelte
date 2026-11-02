@@ -119,9 +119,13 @@
       <div class="tasas">
         <span class="rblk" title="Bolívares por 1 USD"><i class="ti ti-currency-dollar"></i><span class="moneda-cod">USD</span><input id="tasa-input" type="text" value={e.tasaBCV.toFixed(2)} readonly tabindex="-1" aria-readonly="true" /></span>
         <span class="rblk" title="Bolívares por 1 EUR"><i class="ti ti-currency-euro"></i><span class="moneda-cod">EUR</span><input id="tasa-eur-input" type="text" value={e.tasaEUR.toFixed(2)} readonly tabindex="-1" aria-readonly="true" /></span>
-        <span id="tbadge" class="tbadge {e.tasaEstado.clase}"><i class="ti {e.tasaEstado.icono}"></i> {e.tasaEstado.texto}</span>
+        <!-- El dueño corrige la tasa tocando la misma etiqueta (un lápiz suelto no cabía en el teléfono y bajaba solo a otra línea) -->
         {#if esDueno()}
-          <button class="btn sm ghost ico" id="btn-tasa-manual" onclick={corregirTasa} aria-label="Poner la tasa BCV a mano" title="Poner la tasa BCV a mano"><i class="ti ti-pencil"></i></button>
+          <button class="tbadge-btn" id="btn-tasa-manual" onclick={corregirTasa} title="Poner la tasa BCV a mano" aria-label="Tasa {e.tasaEstado.texto}. Poner la tasa BCV a mano">
+            <span id="tbadge" class="tbadge {e.tasaEstado.clase}"><i class="ti {e.tasaEstado.icono}"></i> {e.tasaEstado.texto}{#if e.tasaEstado.icono !== 'ti-pencil'}<i class="ti ti-pencil lapiz"></i>{/if}</span>
+          </button>
+        {:else}
+          <span id="tbadge" class="tbadge {e.tasaEstado.clase}"><i class="ti {e.tasaEstado.icono}"></i> {e.tasaEstado.texto}</span>
         {/if}
       </div>
       <div class="moneda-sel">

@@ -163,6 +163,15 @@ body.app-body::before {
   font-size: 11px; font-weight: 700;
   background: var(--ok-suave); color: var(--ok);
 }
+.tbadge-btn {
+  position: relative; display: inline-flex;
+  padding: 0; border: 0; background: none; cursor: pointer;
+  border-radius: var(--radio-pill);
+}
+/* Área de toque de 44 px sin agrandar la etiqueta */
+.tbadge-btn::before { content: ''; position: absolute; inset: -11px -6px; }
+.tbadge-btn:focus-visible { outline: 2px solid var(--acento); outline-offset: 3px; }
+.tbadge .lapiz { margin-left: 3px; opacity: .8; }
 .tbadge.loading { background: var(--aviso-suave); color: var(--aviso); }
 .tbadge.error { background: var(--error-suave); color: var(--error); }
 .moneda-sel { display: flex; align-items: center; gap: 8px; padding-top: 10px; border-top: 1px solid var(--linea); }
