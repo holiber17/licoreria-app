@@ -9,17 +9,15 @@ Estado al 2 de noviembre de 2026. Todo está probado en un Postgres local con
 |---|---|
 | `acceso_publico.sql` (fase 1: funciones públicas, columnas `mesa` y `referencia`, restricciones de `pedido_items`, `pedido_ajustes`) | `acceso_publico_fase1` |
 | `dinero.sql` (servir, sumar_unidades, cobro con la tasa del día) | `dinero` |
+| `turnos.sql` (cierre de caja por turno; aplicado el 2 de noviembre de 2026) | `turnos` |
 
 ## Falta
 
-1. **`turnos.sql`** — se puede aplicar ya. Es compatible con la versión
-   publicada hoy: sin turno abierto se cobra igual. Tiene que estar antes de
-   publicar la versión nueva (la pantalla de Caja lo usa).
-2. **Publicar la versión Svelte** en Netlify (fusionar los PR a `main`).
-3. **`cierre_publico.sql`** — solo después del paso 2. Quita la lectura
+1. **Publicar la versión Svelte** en Netlify (fusionar los PR a `main`).
+2. **`cierre_publico.sql`** — solo después del paso 1. Quita la lectura
    pública directa de pedidos, avisos y sucursales, y hace que la base
    exija "solo el dueño cancela con consumo".
-4. Con el paso 3 hecho, se puede borrar de la app el código de
+3. Con el paso 2 hecho, se puede borrar de la app el código de
    compatibilidad con la base vieja (`conRpc`, `conMesa`, la mesa dentro
    del nombre y la referencia dentro del método).
 
