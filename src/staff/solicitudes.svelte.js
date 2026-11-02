@@ -64,10 +64,11 @@ export function reiniciarSolicitudes() {
 export async function cargarSolicitudes() {
   if (!e.sucursal) return;
   let r;
-  try { r = await rest('solicitudes?select=*,pedidos(cliente_nombre,mesa)&sucursal_id=eq.' + e.sucursal.id + '&estado=eq.pendiente&order=created_at.asc'); }
+  try { r = await rest('solicitudes?select=*,pedidos(cliente_nombre,mesa,estado)&sucursal_id=eq.' + e.sucursal.id + '&estado=eq.pendiente&order=created_at.asc'); }
   catch (err) { return; }
   if (!r.ok) return;
-  const lista = await r.json();
+  // Un aviso de un pedido ya cobrado o cancelado no le sirve a nadie, aunque siga pendiente
+  const lista = (await r.json()).filter(s => !s.pedidos || s.pedidos.estado === 'abierto');
   const nuevas = lista.filter(s => !vistas.has(s.id));
   nuevas.forEach(s => vistas.add(s.id));
   if (nuevas.length && !primera) avisar(nuevas);
@@ -92,6 +93,18 @@ export async function atenderSolicitud(id) {
   if (!r.ok) { showToast('No se pudo marcar como atendido', 'danger'); return; }
   e.solicitudes = e.solicitudes.filter(s => s.id !== id);
   feedback();
+}
+
+// Al cobrar o cancelar un pedido, sus avisos pendientes quedan atendidos
+// ("Quiere pagar" no debe seguir en el panel después de cobrar)
+export async function cerrarAvisosDelPedido(pedidoId) {
+  e.solicitudes = e.solicitudes.filter(s => s.pedido_id !== pedidoId);
+  try {
+    await rest('solicitudes?pedido_id=eq.' + pedidoId + '&estado=eq.pendiente', {
+      method: 'PATCH', prefer: 'return=minimal',
+      body: { estado: 'atendida', atendida_at: new Date().toISOString(), atendida_por: e.user.id },
+    });
+  } catch (err) { /* el panel ya no lo muestra: el pedido no está abierto */ }
 }
 
 // Tipos de aviso pendientes de un pedido (para marcar su tarjeta)

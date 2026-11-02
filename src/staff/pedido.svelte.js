@@ -7,6 +7,7 @@ import { showToast, enCurso } from '../lib/avisos.svelte.js';
 import { msgError, plural } from '../lib/catalogo.js';
 import { fmtUSD, totalDe } from '../lib/formato.svelte.js';
 import { checkNotificaciones } from './notificaciones.js';
+import { cerrarAvisosDelPedido } from './solicitudes.svelte.js';
 
 export const ped = $state({
   actual: null,        // pedido abierto en pantalla (con pedido_items)
@@ -68,6 +69,7 @@ export async function cancelarPedido() {
   if (error) { showToast(msgError(error, 'No se pudo cancelar el pedido'), 'danger'); return; }
   // Sin filas: el pedido ya no estaba abierto (se cobró o canceló desde otro teléfono)
   if (!cancelados?.length) showToast('Este pedido ya no estaba abierto: no se canceló', 'danger');
+  cerrarAvisosDelPedido(ped.actual.id);
   volverALista();
 }
 
@@ -97,10 +99,11 @@ export async function cobrarPedido(nota) {
     if (error) {
       showToast(msgError(error, 'No se pudo cobrar. Intenta de nuevo.'), 'danger');
       // Si ya estaba cobrado (p. ej. desde otro teléfono), volver a la lista
-      if (/ya fue cobrado/i.test(error.message || '')) { cerrarCobro(); volverALista(); }
+      if (/ya fue cobrado/i.test(error.message || '')) { cerrarCobro(); cerrarAvisosDelPedido(ped.actual.id); volverALista(); }
       return;
     }
     cerrarCobro();
+    cerrarAvisosDelPedido(ped.actual.id);
     // La base cobra con la tasa del día de la sucursal; la de este teléfono queda al día
     if (parseFloat(data?.tasa_bcv) > 0) e.tasaBCV = parseFloat(data.tasa_bcv);
     sonidoCaja(); showToast(`Cobrado ${fmtUSD(data?.total_usd ?? total)} · ${metodo} ✓`);
