@@ -26,7 +26,7 @@ function notifUltimaUnidad(itemNombre, pedidoNombre) {
 
   sonidoAlerta();
   if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-  toastAlerta('<strong>' + esc(itemNombre) + '</strong><br>¡Última unidad! (' + esc(pedidoNombre) + ')');
+  toastAlerta('<strong>' + esc(itemNombre) + '</strong>¡Última unidad! (' + esc(pedidoNombre) + ')');
 
   if (puedeNotificar()) {
     new Notification('⚠️ Última unidad', {

@@ -81,7 +81,7 @@ function avisar(nuevas) {
   const s = nuevas[nuevas.length - 1];
   const t = SOL_TIPOS[s.tipo] || SOL_TIPOS.mesonero;
   const quien = s.pedidos ? nombreConMesa(s.pedidos) : 'Un cliente';
-  toastAlerta(`<strong>${esc(quien)}</strong><br>${t.texto}${s.metodo ? ' · ' + esc(s.metodo) : ''}${s.referencia ? ' · ref ' + esc(s.referencia) : ''}${nuevas.length > 1 ? `<br><span class="t-mini">y ${nuevas.length - 1} aviso(s) más</span>` : ''}`, 7000);
+  toastAlerta(`<strong>${esc(quien)}</strong>${t.texto}${s.metodo ? ' · ' + esc(s.metodo) : ''}${s.referencia ? ' · ref ' + esc(s.referencia) : ''}${nuevas.length > 1 ? `<br><span class="t-mini">y ${nuevas.length - 1} aviso(s) más</span>` : ''}`, 8000, t.icono);
   if (puedeNotificar()) {
     new Notification((s.tipo === 'pagar' ? '💳 ' : '🔔 ') + quien, { body: t.texto + (s.metodo ? ' · ' + s.metodo : '') + (s.referencia ? ' · ref ' + s.referencia : ''), icon: LOGO_URL, tag: 'sol_' + s.id });
   }
