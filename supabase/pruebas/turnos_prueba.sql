@@ -68,3 +68,19 @@ do $$ declare ok boolean; begin
 end $$;
 reset role;
 \echo 'TURNOS OK'
+
+-- cierre_publico.sql: se aplica limpio dos veces y el cancelar con consumo queda en la base
+create or replace function privado.es_dueno() returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.perfiles where id = auth.uid() and rol = 'dueno') $$;
+\i /sql/cierre_publico.sql
+\i /sql/cierre_publico.sql
+insert into public.pedidos (id, sucursal_id, cliente_nombre) values ('00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-00000000000a', 'Mesa 7');
+insert into public.pedido_items (pedido_id, nombre, tipo, total, consumido, precio_usd) values ('00000000-0000-0000-0000-0000000000b1', 'Ron', 'suelto', 1, 1, 28);
+set role authenticated;
+set prueba.uid = '00000000-0000-0000-0000-0000000000e1';
+do $$ declare ok boolean; begin
+  begin update public.pedidos set estado = 'cancelado' where id = '00000000-0000-0000-0000-0000000000b1'; ok := false; exception when others then ok := true; end;
+  assert ok, 'un empleado canceló un pedido con consumo';
+end $$;
+reset role;
+\echo 'CIERRE PUBLICO OK'
