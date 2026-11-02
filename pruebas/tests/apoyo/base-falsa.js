@@ -15,9 +15,10 @@ const TIPOS = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/ja
 function datosIniciales() {
   return {
     sucursales: [{
-      id: 's1', nombre: 'Sucursal Centro', ciudad: 'Caracas', direccion: 'Av. Urdaneta', app_nombre: 'La Bodeguita',
+      id: 's1', nombre: 'Sucursal Centro', ciudad: 'Caracas', direccion: 'Av. Urdaneta', app_nombre: 'La Bodeguita', negocio_id: 'n1',
       datos_pago: { pago_movil: { banco: 'Banesco (0134)', telefono: '0414-5550101', cedula: 'V-12345678' }, zelle: { correo: 'pagos@labodeguita.com', titular: 'Ana Pérez' } }
     }],
+    negocios: [{ id: 'n1', nombre: 'La Bodeguita' }],
     perfiles: [{ id: 'u2', nombre: 'Pedro Barra', rol: 'empleado', sucursal_id: 's1' }, { id: 'u3', nombre: 'Nuevo Ingreso', rol: 'empleado', sucursal_id: null }],
     menu: [
       { id: 'm1', sucursal_id: 's1', nombre: 'Combo Polar x12', tipo: 'combo', precio_usd: 1.2, unidad: 'lata', categoria: 'Cerveza', unidades_combo: 12, activo: true },
@@ -256,6 +257,15 @@ async function sesionDueno(page, base) {
   });
 }
 
+// Sesión del sudo (ve todos los negocios: supabase/negocios.sql)
+async function sesionSudo(page, base) {
+  base.db.perfiles[0].rol = 'sudo';
+  await page.addInitScript(() => {
+    localStorage.setItem('sb-ysnsmsfeqbnezjgxkkui-auth-token', JSON.stringify({ access_token: 't', refresh_token: 'r', expires_at: 4102444800, user: { id: 'u2' } }));
+    localStorage.setItem('perfil_cache_u2', JSON.stringify({ id: 'u2', nombre: 'Pedro Barra', rol: 'sudo', sucursal_id: 's1', sucursales: { id: 's1', nombre: 'Sucursal Centro', app_nombre: 'La Bodeguita', negocio_id: 'n1' } }));
+  });
+}
+
 // Errores de JavaScript de la página (para afirmar que no hubo ninguno)
 function vigilarErrores(page) {
   const errores = [];
@@ -263,4 +273,4 @@ function vigilarErrores(page) {
   return errores;
 }
 
-module.exports = { BaseFalsa, conectar, sesionEmpleado, sesionDueno, vigilarErrores };
+module.exports = { BaseFalsa, conectar, sesionEmpleado, sesionDueno, sesionSudo, vigilarErrores };

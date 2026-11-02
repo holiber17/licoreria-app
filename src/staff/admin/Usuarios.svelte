@@ -1,5 +1,5 @@
 <script>
-  import { e } from '../../lib/estado.svelte.js';
+  import { e, esSudo } from '../../lib/estado.svelte.js';
   import { restGet, restPatch } from '../../lib/api.js';
   import { ini, plural } from '../../lib/catalogo.js';
   import { showToast } from '../../lib/avisos.svelte.js';
@@ -12,11 +12,14 @@
   async function cargar() {
     const [u, s] = await Promise.all([
       restGet('perfiles?select=*,sucursales(nombre)&order=created_at'),
-      restGet('sucursales?select=id,nombre&order=nombre'),
+      restGet('sucursales?select=id,nombre,negocios(nombre)&order=nombre'),
     ]);
     usuarios = u; sucursales = s;
   }
   $effect(() => { cargar(); });
+
+  // El sudo ve sucursales de todos los negocios: el nombre del negocio va delante
+  const etiquetaSuc = s => (esSudo() && s.negocios?.nombre ? s.negocios.nombre + ' · ' : '') + s.nombre;
 
   const pendientes = $derived(usuarios.filter(u => !u.sucursal_id));
   const activos = $derived(usuarios.filter(u => u.sucursal_id));
@@ -62,23 +65,23 @@
               <div class="t-sub">{#if u.sucursales?.nombre}{u.sucursales.nombre}{:else}<span class="t-aviso">Sin sucursal asignada</span>{/if}</div>
               {#if linea}<div class="t-en-linea">En línea ahora{nombreSucursal(linea.sucursal_id) ? ' · en ' + nombreSucursal(linea.sucursal_id) : ''}</div>{/if}
             </div>
-            <span class="pill {u.rol || 'empleado'}">{u.rol === 'dueno' ? 'Dueño' : u.rol === 'empleado' ? 'Empleado' : 'Pendiente'}</span>
+            <span class="pill {u.rol === 'sudo' ? 'dueno' : u.rol || 'empleado'}">{u.rol === 'sudo' ? 'Sudo' : u.rol === 'dueno' ? 'Dueño' : u.rol === 'empleado' ? 'Empleado' : 'Pendiente'}</span>
           </div>
           {#if pendiente}
             <div class="fila gap-s envuelve mt-m">
               <select id="suc-sel-{u.id}" class="campo sm crece" bind:value={elegida[u.id]}>
                 <option value="">Seleccionar sucursal...</option>
-                {#each sucursales as s (s.id)}<option value={s.id}>{s.nombre}</option>{/each}
+                {#each sucursales as s (s.id)}<option value={s.id}>{etiquetaSuc(s)}</option>{/each}
               </select>
               <button class="btn sm success" onclick={() => activar(u.id)}><i class="ti ti-check"></i> Activar</button>
             </div>
-          {:else}
+          {:else if u.rol !== 'sudo'}
             <div class="fila gap-s envuelve mt-m">
               <select class="campo sm" style="width:auto" value={u.rol} onchange={ev => cambiarRol(u.id, ev.currentTarget.value)}>
                 <option value="dueno">Dueño</option><option value="empleado">Empleado</option>
               </select>
               <select class="campo sm crece" value={u.sucursal_id} onchange={ev => cambiarSucursal(u.id, ev.currentTarget.value)}>
-                {#each sucursales as s (s.id)}<option value={s.id}>{s.nombre}</option>{/each}
+                {#each sucursales as s (s.id)}<option value={s.id}>{etiquetaSuc(s)}</option>{/each}
               </select>
             </div>
           {/if}
