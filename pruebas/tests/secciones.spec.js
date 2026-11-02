@@ -187,3 +187,21 @@ test('dueño: en Usuarios se ve quién tiene la app abierta y en qué sucursal',
   await expect(tarjeta.locator('.t-en-linea')).toContainText('En línea ahora · en Sucursal Centro');
   if (process.env.CAPTURAS) await page.screenshot({ path: process.env.CAPTURAS + '/en-linea.png' });
 });
+
+test('sudo: ve el negocio de cada sucursal y crea una sucursal en un negocio nuevo', async ({ page }) => {
+  const { sesionSudo } = require('./apoyo/base-falsa');
+  await sesionSudo(page, base);
+  await page.goto('http://app.test/index.html');
+  await expect(page.locator('#app')).toBeVisible();
+  await ir(page, 'admin');   // el sudo tiene Admin como el dueño
+  await expect(page.locator('#sucursales-list .suc-negocio select')).toHaveValue('n1');
+  await page.locator('#amt-sucursales .top-bar .btn.primary').click();
+  await page.selectOption('#suc-negocio', 'nuevo');
+  await page.fill('#suc-negocio-nuevo', 'L’Cañe');
+  await page.fill('#suc-nombre', 'L’Cañe Montalbán');
+  await page.locator('#suc-form .btn.primary').click();
+  await expect.poll(() => base.db.sucursales.find(s => s.nombre === 'L’Cañe Montalbán')?.negocio_id).toBeTruthy();
+  const negocio = base.db.negocios.find(n => n.nombre === 'L’Cañe');
+  expect(base.db.sucursales.find(s => s.nombre === 'L’Cañe Montalbán').negocio_id).toBe(negocio.id);
+  if (process.env.CAPTURAS) await page.screenshot({ path: process.env.CAPTURAS + '/sudo.png' });
+});

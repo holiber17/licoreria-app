@@ -1,7 +1,7 @@
 <script>
   import { sb } from '../../lib/supabase.js';
   import { untrack } from 'svelte';
-  import { e, nombreNegocio } from '../../lib/estado.svelte.js';
+  import { e, nombreNegocio, esSudo } from '../../lib/estado.svelte.js';
   import { rest, restGet, restInsert, restPatch } from '../../lib/api.js';
   import { showToast } from '../../lib/avisos.svelte.js';
   import { copiarTexto } from '../../lib/catalogo.js';
@@ -12,19 +12,51 @@
   import Vacio from '../../ui/Vacio.svelte';
 
   let sucursales = $state([]);
+  let negocios = $state([]);     // solo el sudo los ve todos
   let formAbierto = $state(false);
-  let nueva = $state({ nombre: '', ciudad: '', dir: '' });
+  let nueva = $state({ nombre: '', ciudad: '', dir: '', negocio: '', negocioNuevo: '' });
 
   async function cargar() {
-    sucursales = await restGet('sucursales?select=id,nombre,ciudad,direccion,activa,logo_url,app_nombre&order=created_at');
+    const [s, n] = await Promise.all([
+      restGet('sucursales?select=id,nombre,ciudad,direccion,activa,logo_url,app_nombre,negocio_id&order=created_at'),
+      esSudo() ? restGet('negocios?select=id,nombre&order=nombre') : Promise.resolve([]),
+    ]);
+    sucursales = s || []; negocios = n || [];
+  }
+  const nombreDeNegocio = id => negocios.find(n => n.id === id)?.nombre || 'Sin negocio';
+
+  function abrirForm() {
+    formAbierto = !formAbierto;
+    nueva = { nombre: '', ciudad: '', dir: '', negocio: e.sucursal?.negocio_id || '', negocioNuevo: '' };
   }
 
   async function guardar() {
     const nombre = nueva.nombre.trim();
     if (!nombre) { alert('Escribe el nombre'); return; }
-    await sb.from('sucursales').insert({ nombre, ciudad: nueva.ciudad.trim(), direccion: nueva.dir.trim(), activa: true });
-    nueva = { nombre: '', ciudad: '', dir: '' }; formAbierto = false;
-    showToast('Sucursal creada ✓'); cargar();
+    const fila = { nombre, ciudad: nueva.ciudad.trim(), direccion: nueva.dir.trim(), activa: true };
+    // El sudo elige el negocio (o crea uno); al dueño la base se la pone en el suyo
+    if (esSudo()) {
+      let negocio = nueva.negocio;
+      if (negocio === 'nuevo') {
+        const n = nueva.negocioNuevo.trim();
+        if (!n) { alert('Escribe el nombre del negocio nuevo'); return; }
+        const { data, error } = await sb.from('negocios').insert({ nombre: n }).select('id').single();
+        if (error) { showToast('No se pudo crear el negocio', 'danger'); return; }
+        negocio = data.id;
+      }
+      if (negocio) fila.negocio_id = negocio;
+    }
+    const { error } = await sb.from('sucursales').insert(fila);
+    if (error) { showToast('No se pudo crear la sucursal', 'danger'); return; }
+    formAbierto = false;
+    showToast('Sucursal creada'); cargar();
+  }
+
+  // Solo el sudo: pasar una sucursal a otro negocio
+  async function moverDeNegocio(s, negocioId) {
+    const r = await restPatch('sucursales', s.id, { negocio_id: negocioId });
+    if (!r.ok) { showToast('No se pudo mover la sucursal', 'danger'); return; }
+    showToast(`${s.nombre} ahora es de ${nombreDeNegocio(negocioId)}`); cargar();
   }
 
   async function cambiar(s) {
@@ -203,9 +235,20 @@
 </script>
 
 <div id="amt-sucursales">
-  <div class="top-bar"><h2>Sucursales</h2><button class="btn sm primary" onclick={() => (formAbierto = !formAbierto)}><i class="ti ti-plus"></i> Nueva</button></div>
+  <div class="top-bar"><h2>Sucursales</h2><button class="btn sm primary" onclick={abrirForm}><i class="ti ti-plus"></i> Nueva</button></div>
   {#if formAbierto}
     <div id="suc-form" class="af">
+      {#if esSudo()}
+        <div class="fg"><label for="suc-negocio">Negocio</label>
+          <select id="suc-negocio" bind:value={nueva.negocio}>
+            {#each negocios as n (n.id)}<option value={n.id}>{n.nombre}</option>{/each}
+            <option value="nuevo">+ Negocio nuevo…</option>
+          </select>
+        </div>
+        {#if nueva.negocio === 'nuevo'}
+          <div class="fg"><label for="suc-negocio-nuevo">Nombre del negocio nuevo</label><input id="suc-negocio-nuevo" placeholder="Ej: L’Cañe" maxlength="80" bind:value={nueva.negocioNuevo} /></div>
+        {/if}
+      {/if}
       <div class="fg"><label for="suc-nombre">Nombre</label><input id="suc-nombre" placeholder="Ej: Licorería Centro" bind:value={nueva.nombre} /></div>
       <div class="row2">
         <div class="fg"><label for="suc-ciudad">Ciudad</label><input id="suc-ciudad" placeholder="Caracas" bind:value={nueva.ciudad} /></div>
@@ -225,7 +268,16 @@
         <div class="suc-card" class:active-branch={activa}>
           <div class="fila crece"><i class="ti ti-building-store t-acento" style="font-size:22px"></i>
             <div class="crece"><div class="t-fuerte recorta">{s.nombre}</div>
-              <div class="t-sub recorta">{s.ciudad || ''} {s.direccion ? '· ' + s.direccion : ''}</div></div>
+              <div class="t-sub recorta">{s.ciudad || ''} {s.direccion ? '· ' + s.direccion : ''}</div>
+              {#if esSudo()}
+                <label class="suc-negocio"><span>Negocio</span>
+                  <select class="campo sm" value={s.negocio_id || ''} onchange={ev => moverDeNegocio(s, ev.currentTarget.value)}>
+                    {#if !s.negocio_id}<option value="">Sin negocio</option>{/if}
+                    {#each negocios as n (n.id)}<option value={n.id}>{n.nombre}</option>{/each}
+                  </select>
+                </label>
+              {/if}
+            </div>
           </div>
           {#if activa}<span class="pill cobrado">Activa</span>
           {:else}<button class="btn sm" onclick={() => cambiar(s)}>Ir <i class="ti ti-arrow-right"></i></button>{/if}

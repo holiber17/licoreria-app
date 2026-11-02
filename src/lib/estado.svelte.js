@@ -21,4 +21,6 @@ export const e = $state({
 
 export function setMoneda(m) { e.moneda = m; guardar('moneda', m); }
 export const nombreNegocio = () => e.sucursal?.app_nombre || e.sucursal?.nombre || 'Mi negocio';
-export const esDueno = () => e.perfil?.rol === 'dueno';
+// sudo: tú, ves todos los negocios. dueño: solo el suyo (supabase/negocios.sql)
+export const esSudo = () => e.perfil?.rol === 'sudo';
+export const esDueno = () => e.perfil?.rol === 'dueno' || esSudo();

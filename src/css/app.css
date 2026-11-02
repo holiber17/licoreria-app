@@ -363,6 +363,8 @@ body.app-body::before {
   padding: 14px; margin-bottom: 8px;
   background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--radio-m);
 }
+.suc-card .suc-negocio { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--tinta-suave); }
+.suc-card .suc-negocio select { flex: 1; min-width: 0; }
 .suc-card.active-branch { border-color: color-mix(in srgb, var(--ok) 50%, transparent); background: var(--ok-suave); }
 .user-card {
   padding: 14px; margin-bottom: 8px;

@@ -144,7 +144,7 @@ async function refreshPerfilCache(u) {
     }
     e.perfil = p;
     if (!p.sucursal_id) { e.pantalla = 'espera'; return; }
-    const suc = await supaFetch('sucursales?select=id,nombre,ciudad,logo_url,app_nombre&id=eq.' + p.sucursal_id, token);
+    const suc = await supaFetch('sucursales?select=id,nombre,ciudad,logo_url,app_nombre,negocio_id&id=eq.' + p.sucursal_id, token);
     e.perfil.sucursales = suc || { id: p.sucursal_id, nombre: 'Mi sucursal' };
     try { localStorage.setItem('perfil_cache_' + u.id, JSON.stringify(e.perfil)); } catch (_) {}
     if (!e.sucursal) entrar();
