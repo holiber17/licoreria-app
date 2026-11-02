@@ -80,7 +80,7 @@
     const res = await restPatch('sucursales', e.sucursal.id, cambios);
     if (res.ok) {
       e.sucursal = { ...e.sucursal, ...cambios };
-      showToast('¡Guardado! La app ahora se llama ' + (nombre || e.sucursal.app_nombre || 'LicorApp') + ' ✓');
+      showToast('¡Guardado! La app ahora se llama ' + (nombre || e.sucursal.app_nombre || 'LicoApp') + ' ✓');
       logoBase64 = null; vistaArchivo = '';
       cargarMarca();
     } else showToast('Error al guardar', 'danger');
@@ -160,7 +160,7 @@
     backup = { clase: 'aviso', icono: 'ti-refresh', texto: 'Leyendo archivo...' };
     try {
       const datos = JSON.parse(await file.text());
-      if (!datos.version || !datos.menu) { backup = { clase: 'error', icono: 'ti-alert-triangle', texto: 'Archivo inválido: no es un backup de LicorApp' }; return; }
+      if (!datos.version || !datos.menu) { backup = { clase: 'error', icono: 'ti-alert-triangle', texto: 'Archivo inválido: no es un backup de LicoApp' }; return; }
       if (!confirm(`¿Importar backup de "${datos.negocio}" del ${new Date(datos.fecha).toLocaleDateString('es-VE')}?\n\nEsto restaurará ${datos.menu.length} productos del menú.\n\nLos productos actuales NO se borrarán, solo se agregarán los nuevos.`)) return;
       let importados = 0, reactivados = 0, fallidos = 0;
       // Productos nuevos se agregan; los que existían pero se habían quitado del menú se reactivan.

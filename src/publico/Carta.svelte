@@ -131,7 +131,7 @@
 
   <footer class="footer" id="carta-pie">
     {#if pie}<i class="ti ti-map-pin"></i> {pie}<br />Precios a la tasa oficial BCV · <strong>{nombreNegocio}</strong>
-    {:else}Precios en dólares a la tasa oficial BCV · <strong>LicorApp</strong>{/if}
+    {:else}Precios en dólares a la tasa oficial BCV · <strong>LicoApp</strong>{/if}
   </footer>
 </div>
 

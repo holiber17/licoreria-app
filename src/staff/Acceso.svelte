@@ -7,8 +7,8 @@
 
 <div id="auth-screen" class="auth-wrap" style="display:flex">
   <div class="auth-box">
-    <img class="auth-logo" src="icon.svg" alt="LicorApp" />
-    <div class="auth-title">LicorApp</div>
+    <img class="auth-logo" src="icon.svg" alt="LicoApp" />
+    <div class="auth-title">LicoApp</div>
     <div class="auth-lema">Licorería · Bodegón</div>
     <div class="auth-sub">{subtitulos[acceso.modo]}</div>
     {#if acceso.error}<div id="auth-error" class="banner error" style="display:flex" role="alert">{acceso.error}</div>{/if}
