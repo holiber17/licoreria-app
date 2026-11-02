@@ -2,7 +2,7 @@
   // Turno de caja: se abre con el fondo y se cierra contando lo que hay por
   // método de pago. La base calcula lo esperado y guarda la diferencia
   // (funciones abrir_turno y cerrar_turno, supabase/turnos.sql).
-  import { sb } from '../lib/config.js';
+  import { sb } from '../lib/supabase.js';
   import { e, nombreNegocio } from '../lib/estado.svelte.js';
   import { fmtUSD } from '../lib/formato.svelte.js';
   import { bs } from '../lib/dinero.js';

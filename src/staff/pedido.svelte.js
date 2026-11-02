@@ -1,5 +1,5 @@
 // Pedidos abiertos: lista, pedido en pantalla, consumo y cobro
-import { sb } from '../lib/config.js';
+import { sb } from '../lib/supabase.js';
 import { restGet } from '../lib/api.js';
 import { e, esDueno } from '../lib/estado.svelte.js';
 import { feedback, sonidoCaja, vibrate } from '../lib/sonidos.js';

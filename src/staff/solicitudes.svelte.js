@@ -1,6 +1,7 @@
 // Avisos de los clientes (desde la página del QR): "Llamar al mesonero" y "Quiero pagar".
 // Necesita la tabla `solicitudes` (supabase/cliente.sql).
-import { sb, LOGO_URL } from '../lib/config.js';
+import { LOGO_URL } from '../lib/config.js';
+import { sb } from '../lib/supabase.js';
 import { rest, restPatch } from '../lib/api.js';
 import { e } from '../lib/estado.svelte.js';
 import { sonidoAlerta, feedback } from '../lib/sonidos.js';

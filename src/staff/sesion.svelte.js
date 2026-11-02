@@ -1,5 +1,6 @@
 // Sesión: acceso, registro, perfil y arranque
-import { sb, SUPA_URL, SUPA_KEY } from '../lib/config.js';
+import { SUPA_URL, SUPA_KEY } from '../lib/config.js';
+import { sb } from '../lib/supabase.js';
 import { rest, supaFetch, getToken, tokenKeyActual } from '../lib/api.js';
 import { e } from '../lib/estado.svelte.js';
 import { showToast } from '../lib/avisos.svelte.js';

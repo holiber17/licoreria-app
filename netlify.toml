@@ -10,3 +10,9 @@
   for = "/sw.js"
   [headers.values]
     Cache-Control = "no-cache"
+
+# Los archivos de /assets llevan un hash en el nombre: se pueden guardar para siempre
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

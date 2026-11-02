@@ -1,5 +1,6 @@
 <script>
-  import { LOGO_URL, sb } from '../lib/config.js';
+  import { LOGO_URL } from '../lib/config.js';
+  import { sb } from '../lib/supabase.js';
   import { e, nombreNegocio } from '../lib/estado.svelte.js';
   import { fmtUSD, fmtBsCon, fmtBsTotal, resumenCaja, agruparItems } from '../lib/formato.svelte.js';
   import { fmtHora } from '../lib/catalogo.js';

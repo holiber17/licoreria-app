@@ -1,5 +1,5 @@
 <script>
-  import { sb } from '../../lib/config.js';
+  import { sb } from '../../lib/supabase.js';
   import { untrack } from 'svelte';
   import { e, nombreNegocio } from '../../lib/estado.svelte.js';
   import { rest, restGet, restInsert, restPatch } from '../../lib/api.js';
@@ -46,12 +46,25 @@
     marca.url = e.sucursal?.logo_url || '';
     vistaArchivo = '';
   }
+  // El logo viaja en cada apertura de la app, la carta y el pedido: se reduce a
+  // 256 px (WebP, ~10 KB) antes de guardarlo, en vez de guardar la foto entera.
   function elegirArchivo(ev) {
     const f = ev.currentTarget.files[0];
     if (!f) return;
-    const lector = new FileReader();
-    lector.onload = x => { logoBase64 = x.target.result; vistaArchivo = logoBase64; marca.url = ''; };
-    lector.readAsDataURL(f);
+    const img = new Image();
+    const url = URL.createObjectURL(f);
+    img.onload = () => {
+      const lado = 256, k = Math.min(1, lado / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      logoBase64 = c.toDataURL('image/webp', 0.85);
+      if (!logoBase64.startsWith('data:image/webp')) logoBase64 = c.toDataURL('image/png');
+      vistaArchivo = logoBase64; marca.url = '';
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); showToast('No se pudo leer la imagen', 'danger'); };
+    img.src = url;
   }
   function alEscribirUrl() { logoBase64 = null; vistaArchivo = ''; }
   const imagenVista = $derived(vistaArchivo || marca.url.trim());
