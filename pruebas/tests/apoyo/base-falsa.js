@@ -67,9 +67,7 @@ class BaseFalsa {
 
   rpc(fn, b) {
     const db = this.db;
-    // Funciones públicas (supabase/acceso_publico.sql). Una base sin migrar no las tiene.
-    const PUBLICAS = ['pedido_publico', 'avisos_de_pedido', 'sucursal_publica', 'crear_solicitud'];
-    if (PUBLICAS.includes(fn) && (this.sinColumnas || []).length) return { status: 404, json: { message: 'function not found' } };
+    // Funciones públicas (supabase/acceso_publico.sql)
     if (fn === 'pedido_publico') {
       const p = db.pedidos.find(x => x.id === b.p);
       if (!p) return { json: null };
@@ -180,10 +178,6 @@ class BaseFalsa {
     if (metodo === 'GET' && (f.leer || []).includes(t)) return { status: 500, json: { message: 'falla simulada' } };
     if (metodo !== 'GET' && (f.escribir || []).includes(t)) return { status: 401, json: { message: 'falla simulada' } };
     if (t.startsWith('rpc/')) return this.rpc(t.slice(4), body);
-    // Simula una base sin migrar: pedir o escribir una de estas columnas da 400
-    const faltan = this.sinColumnas || [];
-    const pide = c => (sp.get('select') || '').split(/[,()]/).includes(c) || (body && (Array.isArray(body) ? body : [body]).some(x => c in x));
-    if (faltan.some(pide)) return { status: 400, json: { message: 'column does not exist' } };
     const db = this.db;
     if (!db[t]) return { json: unico ? {} : [] };
     if (metodo === 'GET') {

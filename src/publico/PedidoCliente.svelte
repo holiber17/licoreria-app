@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { LOGO_URL } from '../lib/config.js';
-  import { anonGet, anonInsert, anonRpc } from '../lib/api.js';
+  import { anonGet, anonRpc } from '../lib/api.js';
   import { ini, etiquetaMesa } from '../lib/catalogo.js';
   import { toastAlerta, esc } from '../lib/avisos.svelte.js';
   import { tasas, fetchTasas, fmtUSD, fmtBs } from './comun.svelte.js';
@@ -25,8 +25,6 @@
   let referenciaPago = $state('');  // referencia del pago que escribe el cliente (opcional)
   let ahora = $state(Date.now());
   let hasta = $state({ mesonero: lsEspera('mesonero'), pagar: lsEspera('pagar') });
-  let tiempoReal = false;
-  let conRpc = true;   // se apaga si la base aún no tiene las funciones públicas
   let anterior = {};
   let permiso = false;
 
@@ -69,14 +67,7 @@
   async function cargarNegocio(sucursalId) {
     if (sucursal || !sucursalId) return;
     const id = encodeURIComponent(sucursalId);
-    let s;
-    if (conRpc) s = (await anonRpc('sucursal_publica', { p: sucursalId })).data;
-    else {
-      // Base sin supabase/acceso_publico.sql: lectura directa (datos_pago viene de supabase/cliente.sql)
-      let d = await anonGet('sucursales?select=id,nombre,app_nombre,logo_url,datos_pago&id=eq.' + id);
-      if (d === null) d = await anonGet('sucursales?select=id,nombre,app_nombre,logo_url&id=eq.' + id);
-      s = d && d[0];
-    }
+    const s = (await anonRpc('sucursal_publica', { p: sucursalId })).data;
     if (!s) return;
     sucursal = s;
     // Categoría e imagen de cada producto, para mostrar su ícono
@@ -93,23 +84,11 @@
   async function loadPedido() {
     if (!pedidoId) return;
     // Solo este pedido, vía funciones de Supabase (supabase/acceso_publico.sql).
-    // Si la base aún no las tiene (404), se lee como antes.
-    let p;
     // Los avisos se piden a la vez que el pedido (no uno detrás del otro)
-    const avisosPendientes = conRpc
-      ? anonRpc('avisos_de_pedido', { p: pedidoId }).then(r => r.data)
-      : anonGet('solicitudes?select=id,tipo,estado,created_at,atendida_at&pedido_id=eq.' + encodeURIComponent(pedidoId) + '&order=created_at.desc&limit=10');
-    if (conRpc) {
-      const r = await anonRpc('pedido_publico', { p: pedidoId });
-      if (r.status === 404) conRpc = false;
-      else if (!r.ok) { if (!pedido) estado = 'error'; return; }
-      else p = r.data;
-    }
-    if (!conRpc) {
-      const data = await anonGet('pedidos?select=*,pedido_items(*)&id=eq.' + encodeURIComponent(pedidoId));
-      if (data === null) { if (!pedido) estado = 'error'; return; }
-      p = data[0];
-    }
+    const avisosPendientes = anonRpc('avisos_de_pedido', { p: pedidoId }).then(r => r.data);
+    const r = await anonRpc('pedido_publico', { p: pedidoId });
+    if (!r.ok) { if (!pedido) estado = 'error'; return; }
+    const p = r.data;
     if (!p) { estado = 'noEncontrado'; return; }
     // El pedido se muestra ya; los avisos llegan enseguida y el negocio (logo,
     // datos de pago, íconos) se carga detrás sin frenar el primer pintado
@@ -152,17 +131,7 @@
       return false;
     }
     if (enEspera(tipo)) { aviso('ti-clock', 'Ya avisamos al personal.<br>En un momento te atienden.'); return false; }
-    let ok = false;
-    if (conRpc) {
-      const r = await anonRpc('crear_solicitud', { p_pedido: pedido.id, p_tipo: tipo, p_metodo: metodo || null, p_referencia: referencia || null });
-      if (r.status === 404) conRpc = false;
-      ok = r.ok;
-    }
-    const base = { sucursal_id: pedido.sucursal_id, pedido_id: pedido.id, tipo, metodo: metodo || null };
-    if (!conRpc) ok = await anonInsert('solicitudes', referencia ? { ...base, referencia } : base);
-    // Si la columna `referencia` aún no existe (supabase/ajustes_mesonero.sql),
-    // el aviso se envía igual con la referencia dentro del texto del método.
-    if (!conRpc && !ok && referencia) ok = await anonInsert('solicitudes', { ...base, metodo: ('ref ' + referencia + ' · ' + (metodo || 'Pago')).slice(0, 40) });
+    const { ok } = await anonRpc('crear_solicitud', { p_pedido: pedido.id, p_tipo: tipo, p_metodo: metodo || null, p_referencia: referencia || null });
     if (!ok) { aviso('ti-alert-triangle', 'No pudimos enviar el aviso.<br>Por favor llama a un mesonero.'); return false; }
     const t = Date.now();
     try { localStorage.setItem(claveEspera(tipo), String(t)); } catch (err) {}
@@ -254,40 +223,20 @@
     });
   }
 
-  // ---- Tiempo real: si está disponible la página se actualiza al instante; si no, consulta cada 10 s ----
-  // Solo sirve con una base sin supabase/acceso_publico.sql (con las funciones
-  // públicas el cliente no ve las tablas y no le llega nada). Por eso supabase-js
-  // se descarga solo en ese caso.
-  async function iniciarTiempoReal() {
-    if (!pedidoId || conRpc) return;
-    try {
-      const { clienteAnonimo } = await import('../lib/supabase.js');
-      const cli = clienteAnonimo();
-      let t = null;
-      const refrescar = () => { clearTimeout(t); t = setTimeout(loadPedido, 250); };
-      const f = 'pedido_id=eq.' + pedidoId;
-      cli.channel('pedido-' + pedidoId)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'pedido_items', filter: f }, refrescar)
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pedidos', filter: 'id=eq.' + pedidoId }, refrescar)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'solicitudes', filter: f }, refrescar)
-        .subscribe(s => { tiempoReal = s === 'SUBSCRIBED'; });
-    } catch (err) { tiempoReal = false; }
-  }
-
   onMount(() => {
     // El permiso de notificaciones se pide al tocar un botón, no al abrir
     if ('Notification' in window && Notification.permission === 'granted') permiso = true;
     // El pedido trae su tasa: no hace falta esperar a dolarapi para mostrarlo
     fetchTasas();
-    loadPedido().then(iniciarTiempoReal);
-    // Se consulta cada 10 s (cada 60 s si hay tiempo real), y nada mientras la
-    // pestaña está oculta. La tasa cambia una vez al día: se pide cada 30 min.
+    loadPedido();
+    // Se consulta cada 10 s, y nada mientras la pestaña está oculta (el cliente
+    // no ve las tablas, así que no hay tiempo real). La tasa cambia una vez al
+    // día: se pide cada 30 min.
     let vueltas = 0;
     const respaldo = setInterval(async () => {
       if (document.hidden) return;
       vueltas++;
       if (vueltas % 180 === 0) fetchTasas();
-      if (tiempoReal && !conRpc && vueltas % 6 !== 0) return;
       await loadPedido();
     }, 10000);
     const alVolver = () => { if (!document.hidden) loadPedido(); };

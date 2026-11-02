@@ -28,10 +28,7 @@ export async function cargarLista() {
 
 export async function crearPedido(nombre, mesa = '') {
   const datos = { sucursal_id: e.sucursal.id, usuario_id: e.user.id, cliente_nombre: nombre, estado: 'abierto', tasa_bcv: e.tasaBCV };
-  let { data, error } = await sb.from('pedidos').insert(mesa ? { ...datos, mesa } : datos).select().single();
-  // Si la columna `mesa` aún no existe en Supabase (supabase/ajustes_mesonero.sql),
-  // el pedido se crea igual y la mesa se guarda dentro del nombre.
-  if (error && mesa) ({ data, error } = await sb.from('pedidos').insert({ ...datos, cliente_nombre: nombre + ' · Mesa ' + mesa }).select().single());
+  const { data, error } = await sb.from('pedidos').insert(mesa ? { ...datos, mesa } : datos).select().single();
   if (error) { showToast('Error al crear pedido', 'danger'); return false; }
   await abrirPedido(data.id);
   return true;

@@ -153,17 +153,3 @@ test('con consumo servido, un empleado no puede cancelar el pedido', async ({ pa
   await expect(page.locator('.toast.error')).toContainText('solo el dueño');
   expect(base.db.pedidos[0].estado).toBe('abierto');
 });
-
-test('sin la columna mesa en la base: la mesa va en el nombre y los avisos siguen llegando', async ({ page }) => {
-  base.sinColumnas = ['mesa'];
-  await page.locator('#s-lista .top-bar .btn.primary').click();
-  await page.fill('#nuevo-nombre', 'Carlos');
-  await page.fill('#nuevo-mesa', '4');
-  await page.locator('#form-nuevo .btn.primary').click();
-  await expect(page.locator('#s-detalle')).toHaveClass(/active/);
-  expect(base.db.pedidos[0].cliente_nombre).toBe('Carlos · Mesa 4');
-  base.db.solicitudes.push({ id: 'sx', sucursal_id: 's1', pedido_id: base.db.pedidos[0].id, tipo: 'mesonero', estado: 'pendiente', created_at: new Date().toISOString() });
-  await page.locator('#s-detalle .top-bar .btn.ghost').click();
-  await page.evaluate(() => window.__licor?.cargarSolicitudes?.());
-  await expect(page.locator('#solicitudes-panel')).toContainText('Carlos · Mesa 4', { timeout: 20000 });
-});
