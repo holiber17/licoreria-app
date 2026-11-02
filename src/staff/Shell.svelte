@@ -8,6 +8,7 @@
   import { showToast, conexion } from '../lib/avisos.svelte.js';
   import { loadMenu } from './menu.svelte.js';
   import { iniciarSolicitudes, detenerSolicitudes } from './solicitudes.svelte.js';
+  import { iniciarPresencia, detenerPresencia } from './presencia.svelte.js';
   import { pedirPermisoNotif } from './notificaciones.js';
   import Pedidos from './Pedidos.svelte';
   import Menu from './Menu.svelte';
@@ -52,9 +53,10 @@
     fetchBCV();
     const t = setInterval(fetchBCV, 30 * 60 * 1000);
     iniciarSolicitudes();
+    iniciarPresencia();
     const fs = () => { pantallaCompleta = !!document.fullscreenElement; };
     document.addEventListener('fullscreenchange', fs);
-    return () => { clearInterval(t); detenerSolicitudes(); document.removeEventListener('fullscreenchange', fs); };
+    return () => { clearInterval(t); detenerSolicitudes(); detenerPresencia(); document.removeEventListener('fullscreenchange', fs); };
   });
 
   function toggleFullscreen() {

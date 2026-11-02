@@ -172,3 +172,18 @@ test('el tema claro se recuerda', async ({ page }) => {
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-tema', 'claro');
 });
+
+test('dueño: en Usuarios se ve quién tiene la app abierta y en qué sucursal', async ({ page }) => {
+  await entrar(page, true);
+  await ir(page, 'admin');
+  await page.click('#atab-usuarios');
+  await expect(page.locator('#en-linea-resumen')).toContainText('Nadie más');
+  const dueno = base.db.perfiles.find(p => p.rol === 'dueno');
+  const otro = base.db.perfiles.find(p => p.id !== dueno.id);
+  const aqui = { nombre: 'x', sucursal_id: 's1', desde: new Date().toISOString() };
+  await page.evaluate(([a, b, v]) => window.__licor.ponerPresencia({ [a]: v, [b]: v }), [dueno.id, otro.id, aqui]);
+  await expect(page.locator('#en-linea-resumen')).toContainText('1 persona más con la app abierta ahora');   // tú no cuentas
+  const tarjeta = page.locator('.user-card', { hasText: dueno.nombre });
+  await expect(tarjeta.locator('.t-en-linea')).toContainText('En línea ahora · en Sucursal Centro');
+  if (process.env.CAPTURAS) await page.screenshot({ path: process.env.CAPTURAS + '/en-linea.png' });
+});

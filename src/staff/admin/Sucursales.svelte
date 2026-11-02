@@ -7,6 +7,7 @@
   import { copiarTexto } from '../../lib/catalogo.js';
   import { loadMenu } from '../menu.svelte.js';
   import { reiniciarSolicitudes } from '../solicitudes.svelte.js';
+  import { actualizarPresencia } from '../presencia.svelte.js';
   import { abrirWhatsApp } from '../comprobantes.js';
   import Vacio from '../../ui/Vacio.svelte';
 
@@ -33,6 +34,7 @@
     await loadMenu();
     e.versionPedidos++;
     reiniciarSolicitudes();
+    actualizarPresencia();
     cargar();
   }
 
