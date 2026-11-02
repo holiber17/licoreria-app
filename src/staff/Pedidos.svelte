@@ -63,7 +63,7 @@
           <div class="solicitud {s.tipo}">
             <i class="ti {t.icono} sol-icono"></i>
             <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-            <div class="crece" onclick={() => abrirPedido(s.pedido_id)}>
+            <div class="crece" role="button" tabindex="0" onkeydown={ev => (ev.key === 'Enter' || ev.key === ' ') && (ev.preventDefault(), ev.currentTarget.click())} onclick={() => abrirPedido(s.pedido_id)}>
               <div class="t-fuerte recorta">{s.pedidos ? nombreConMesa(s.pedidos) : 'Pedido'}</div>
               <div class="t-sub">{t.texto}{s.metodo ? ' · ' + s.metodo : ''}{#if s.referencia} · <strong>ref {s.referencia}</strong>{/if} · {hace(s.created_at)}</div>
             </div>
@@ -86,7 +86,7 @@
           <div id="cliente-sugeridos" class="sugerencias" style="display:block">
             {#each sugeridos as c (c.id)}
               <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-              <div class="sugerencia" onclick={() => (nombreNuevo = c.nombre)}>
+              <div class="sugerencia" role="button" tabindex="0" onkeydown={ev => (ev.key === 'Enter' || ev.key === ' ') && (ev.preventDefault(), ev.currentTarget.click())} onclick={() => (nombreNuevo = c.nombre)}>
                 <div class="avatar sm">{ini(c.nombre)}</div>
                 <div><div class="t-fuerte">{c.nombre}</div><div class="t-mini">{c.telefono || 'Sin teléfono'}</div></div>
               </div>
@@ -111,7 +111,7 @@
           {#each filtrados as p (p.id)}
             {@const its = p.pedido_items || []}
             <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-            <div class="cli-card activo" data-pedido={p.id} onclick={() => abrirPedido(p.id)}>
+            <div class="cli-card activo" data-pedido={p.id} role="button" tabindex="0" onkeydown={ev => (ev.key === 'Enter' || ev.key === ' ') && (ev.preventDefault(), ev.currentTarget.click())} onclick={() => abrirPedido(p.id)}>
               <div class="avisos-tarjeta">
                 {#each avisosDePedido(p.id) as tipo (tipo)}
                   {#if tipo === 'pagar'}<span class="aviso-tarjeta pagar"><i class="ti ti-wallet"></i> Quiere pagar</span>
@@ -121,7 +121,7 @@
               <div class="fila">
                 <div class="avatar sm">{ini(p.cliente_nombre)}</div>
                 <span class="nombre recorta crece">{p.cliente_nombre}</span>
-                {#if etiquetaMesa(p)}<span class="aviso-tarjeta"><i class="ti ti-armchair"></i> {etiquetaMesa(p)}</span>{/if}
+                {#if etiquetaMesa(p)}<span class="mesa-tag"><i class="ti ti-armchair"></i> {etiquetaMesa(p)}</span>{/if}
               </div>
               <div class="pedido-total"><Dual n={totalDe(its)} /></div>
               <div class="t-mini mt-s"><i class="ti ti-clock"></i> {fmtHora(p.created_at)} · {its.length} {plural(its.length, 'ítem')}</div>

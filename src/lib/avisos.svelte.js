@@ -23,13 +23,17 @@ function poner(aviso, ms) {
 
 // Aviso corto de éxito o error
 export function showToast(msg, tipo = 'success') {
-  poner({ clase: tipo === 'success' ? 'ok' : 'error', icono: tipo === 'success' ? 'ti-circle-check' : 'ti-alert-circle', texto: msg }, 2500);
+  const ok = tipo === 'success';
+  const ms = Math.max(ok ? 2500 : 5000, String(msg).length * 60);   // tiempo para leerlo entero
+  poner({ clase: ok ? 'ok' : 'error', icono: ok ? 'ti-circle-check' : 'ti-alert-circle', texto: msg }, ms);
 }
 // Aviso grande (reemplaza al anterior). `html` ya debe venir escapado.
 export function toastAlerta(html, ms = 5000, icono = 'ti-alert-triangle', arriba = false) {
   avisos.lista = avisos.lista.filter(a => a.clase !== 'alerta');
   poner({ clase: 'alerta', icono, html, arriba }, ms);
 }
+
+export const cerrarAviso = id => { avisos.lista = avisos.lista.filter(a => a.id !== id); };
 
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 

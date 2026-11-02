@@ -44,6 +44,7 @@
 
   // La pestaña activa se acerca al centro de la barra
   $effect(() => { document.getElementById('gnav-' + e.seccion)?.scrollIntoView?.({ block: 'nearest', inline: 'center', behavior: 'smooth' }); });
+  $effect(() => { e.seccion; window.scrollTo(0, 0); });
 
   onMount(() => {
     pedirPermisoNotif();
@@ -95,7 +96,7 @@
     </div>
     <nav class="nav-tabs">
       {#each secciones as s (s.id)}
-        <button class="nav-tab" class:active={e.seccion === s.id} id="gnav-{s.id}" onclick={() => (e.seccion = s.id)}>
+        <button class="nav-tab" class:active={e.seccion === s.id} id="gnav-{s.id}" aria-current={e.seccion === s.id ? 'page' : undefined} onclick={() => (e.seccion = s.id)}>
           <i class="ti {s.icono}"></i> {s.texto}
           {#if s.id === 'pedidos' && e.solicitudes.length}<span class="nav-badge">{e.solicitudes.length}</span>{/if}
         </button>

@@ -113,8 +113,12 @@
                   <div class="carta-info">
                     <div class="carta-nombre">{p.nombre}</div>
                     <div class="carta-detalle">{p.tipo === 'combo' ? `Combo · ${p.unidades_combo} ${p.unidad}s` : `Por ${p.unidad}`}</div>
-                    <div class="carta-precio">{principal(p.precio_usd)}<span>{secundario(p.precio_usd)}</span></div>
-                    {#if p.tipo === 'combo'}<div class="carta-combo">Combo completo: {principal(p.precio_usd * p.unidades_combo)}</div>{/if}
+                    {#if p.tipo === 'combo'}
+                      <div class="carta-precio">{principal(p.precio_usd * p.unidades_combo)}<span>{secundario(p.precio_usd * p.unidades_combo)}</span></div>
+                      <div class="carta-combo">{principal(p.precio_usd)} c/u</div>
+                    {:else}
+                      <div class="carta-precio">{principal(p.precio_usd)}<span>{secundario(p.precio_usd)}</span></div>
+                    {/if}
                   </div>
                 </article>
               {/each}

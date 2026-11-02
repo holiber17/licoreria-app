@@ -93,8 +93,8 @@ test('la hoja de cobro exige el método y registra el elegido; el doble toque co
   await expect(page.locator('#btn-confirmar-cobro')).toContainText('Pago móvil');
   await page.evaluate(() => { const b = document.getElementById('btn-confirmar-cobro'); b.click(); b.click(); b.click(); });
 
-  await expect(page.locator('#sec-caja')).toHaveClass(/active/);
-  expect(base.rpcs('cobrar_pedido')).toHaveLength(1);
+  await expect(page.locator('#s-lista')).toHaveClass(/active/);   // sigue en Pedidos
+  await expect.poll(() => base.rpcs('cobrar_pedido').length).toBe(1);
   expect(base.db.caja).toHaveLength(1);
   expect(base.db.caja[0]).toMatchObject({ total_usd: 42, metodo_pago: 'Pago móvil' });
 });
@@ -130,7 +130,7 @@ test('la mesa se guarda aparte del nombre y se ve en la tarjeta del pedido', asy
   expect(base.db.pedidos[0]).toMatchObject({ cliente_nombre: 'Carlos', mesa: '4' });
   await expect(page.locator('#det-nombre')).toHaveText('Carlos · Mesa 4');
   await page.locator('#s-detalle .top-bar .btn.ghost').click();
-  await expect(page.locator('.cli-card .aviso-tarjeta')).toContainText('Mesa 4');
+  await expect(page.locator('.cli-card .mesa-tag')).toContainText('Mesa 4');
 });
 
 test('cancelar sin consumo deja escrito quién lo canceló', async ({ page }) => {
