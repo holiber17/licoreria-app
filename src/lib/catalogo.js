@@ -33,9 +33,15 @@ export function hace(fecha) {
 }
 
 // Mensaje legible de un error de Supabase / PostgREST
+// (los mensajes técnicos en inglés se traducen; los de nuestras funciones ya vienen en español)
 export function msgError(error, porDefecto = 'Algo salió mal. Intenta de nuevo.') {
   const m = error?.message || '';
   if (!m || /fetch|network|Failed/i.test(m)) return navigator.onLine === false ? 'Sin conexión a internet' : porDefecto;
+  if (/jwt|token.*expired|invalid claim|not authenticated/i.test(m)) return 'Tu sesión venció. Sal y vuelve a entrar.';
+  if (/row-level security|permission denied|42501/i.test(m)) return 'No tienes permiso para hacer esto.';
+  if (/duplicate key|already exists/i.test(m)) return 'Eso ya existe.';
+  if (/violates check constraint/i.test(m)) return 'Hay un valor no válido (por ejemplo, un número negativo).';
+  if (/^[\x00-\x7F]*$/.test(m) && !/[áéíóúñ¿¡]/i.test(m) && /\b(the|is|not|invalid|error|could)\b/i.test(m)) return porDefecto;
   return m;
 }
 

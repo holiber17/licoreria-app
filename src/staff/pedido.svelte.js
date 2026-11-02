@@ -1,5 +1,5 @@
 // Pedidos abiertos: lista, pedido en pantalla, consumo y cobro
-import { sb } from '../lib/config.js';
+import { sb } from '../lib/supabase.js';
 import { restGet } from '../lib/api.js';
 import { e, esDueno } from '../lib/estado.svelte.js';
 import { feedback, sonidoCaja, vibrate } from '../lib/sonidos.js';
@@ -107,7 +107,7 @@ export async function cobrarPedido(nota) {
     // La base cobra con la tasa del día de la sucursal; la de este teléfono queda al día
     if (parseFloat(data?.tasa_bcv) > 0) e.tasaBCV = parseFloat(data.tasa_bcv);
     sonidoCaja(); showToast(`Cobrado ${fmtUSD(data?.total_usd ?? total)} · ${metodo} ✓`);
-    volverALista(); e.seccion = 'caja';
+    volverALista();
   });
 }
 

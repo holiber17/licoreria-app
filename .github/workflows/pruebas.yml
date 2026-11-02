@@ -6,6 +6,27 @@ on:
     branches: [main]
 
 jobs:
+  # Dinero, fechas y mensajes (funciones puras, en segundos)
+  unitarias:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  # El SQL de supabase/ en un Postgres de prueba (nunca toca Supabase)
+  sql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/prueba-sql.sh
+
   navegador:
     runs-on: ubuntu-latest
     timeout-minutes: 15

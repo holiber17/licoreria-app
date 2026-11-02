@@ -10,4 +10,6 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: { input: { index: 'index.html', carta: 'carta.html', pedido: 'pedido.html' } },
   },
+  // Pruebas unitarias (npm test). Las de navegador están en pruebas/ y usan Playwright.
+  test: { include: ['tests/unit/**/*.test.js'] },
 });

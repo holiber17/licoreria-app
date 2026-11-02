@@ -374,12 +374,16 @@ body.app-body::before {
   animation: latir 1.6s ease-in-out infinite;
 }
 .aviso-tarjeta.pagar { background: var(--ok-suave); color: var(--ok); }
+.mesa-tag {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: var(--radio-pill);
+  font-size: 12px; font-weight: 800; background: var(--superficie-3); color: var(--tinta-suave); flex-shrink: 0;
+}
 
 /* ---------- Avisos de clientes ---------- */
 .nav-tab { position: relative; }
 .nav-badge {
   position: absolute; top: 2px; right: 6px; min-width: 18px; height: 18px; padding: 0 5px;
-  border-radius: var(--radio-pill); background: var(--error); color: #fff;
+  border-radius: var(--radio-pill); background: var(--error); color: var(--sobre-error);
   font-size: 10.5px; font-weight: 800; display: flex; align-items: center; justify-content: center;
   animation: latir 1.6s ease-in-out infinite;
 }
@@ -420,3 +424,12 @@ body.app-body::before {
 
 :fullscreen body.app-body .shell { max-width: 100%; }
 body.kiosco .shell { max-width: 100%; }
+
+/* ---------- Áreas táctiles: mínimo 44 px (mesoneros con prisa y poca luz) ---------- */
+.btn { min-height: 44px; }
+.btn.sm { min-height: 40px; }
+.btn.sm.ico, .btn.ico { min-width: 44px; min-height: 44px; }
+.icon-btn { width: 44px; height: 44px; }
+.cbtn { width: 44px; height: 44px; }
+.itab { min-height: 44px; }
+.mtbtn { min-height: 36px; }

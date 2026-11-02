@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { LOGO_URL, clienteAnonimo } from '../lib/config.js';
+  import { LOGO_URL } from '../lib/config.js';
   import { anonGet, anonInsert, anonRpc } from '../lib/api.js';
   import { ini, etiquetaMesa } from '../lib/catalogo.js';
   import { toastAlerta, esc } from '../lib/avisos.svelte.js';
@@ -54,6 +54,9 @@
   const totalUSD = $derived(items.reduce((s, i) => s + i.consumido * i.precio_usd, 0));
   const abierto = $derived(pedido?.estado === 'abierto');
   const cobrado = $derived(pedido?.estado === 'cobrado');
+  const cancelado = $derived(pedido?.estado === 'cancelado');
+  // Si el pedido se cierra mientras el cliente tiene abierta la hoja de pago, se cierra la hoja
+  $effect(() => { if (pedido && !abierto) pagoAbierto = false; });
   // Abierto: la tasa de hoy de la sucursal, la misma con la que se va a cobrar.
   // Cobrado: la tasa con la que se cobró. Sin ninguna, 0 ("Bs —").
   const tasaPedido = $derived(cobrado
@@ -92,6 +95,10 @@
     // Solo este pedido, vía funciones de Supabase (supabase/acceso_publico.sql).
     // Si la base aún no las tiene (404), se lee como antes.
     let p;
+    // Los avisos se piden a la vez que el pedido (no uno detrás del otro)
+    const avisosPendientes = conRpc
+      ? anonRpc('avisos_de_pedido', { p: pedidoId }).then(r => r.data)
+      : anonGet('solicitudes?select=id,tipo,estado,created_at,atendida_at&pedido_id=eq.' + encodeURIComponent(pedidoId) + '&order=created_at.desc&limit=10');
     if (conRpc) {
       const r = await anonRpc('pedido_publico', { p: pedidoId });
       if (r.status === 404) conRpc = false;
@@ -104,13 +111,13 @@
       p = data[0];
     }
     if (!p) { estado = 'noEncontrado'; return; }
-    await cargarNegocio(p.sucursal_id);
-    avisos = (conRpc
-      ? (await anonRpc('avisos_de_pedido', { p: pedidoId })).data
-      : await anonGet('solicitudes?select=id,tipo,estado,created_at,atendida_at&pedido_id=eq.' + encodeURIComponent(pedidoId) + '&order=created_at.desc&limit=10')) || [];
-    avisarSiAtendieron();
+    // El pedido se muestra ya; los avisos llegan enseguida y el negocio (logo,
+    // datos de pago, íconos) se carga detrás sin frenar el primer pintado
     pedido = p; estado = 'ok';
     checkNotifCliente(p.pedido_items || []);
+    cargarNegocio(p.sucursal_id);
+    avisos = (await avisosPendientes) || [];
+    avisarSiAtendieron();
   }
 
   // ---- Estado de los avisos ("Ya vienen") ----
@@ -139,7 +146,11 @@
 
   // ---- Solicitudes al personal ----
   async function enviarSolicitud(tipo, metodo, referencia) {
-    if (!pedido || pedido.estado !== 'abierto') return false;
+    if (!pedido || pedido.estado !== 'abierto') {
+      pagoAbierto = false;
+      aviso('ti-info-circle', 'Este pedido ya está cerrado.<br>Si tienes dudas, pregúntale al personal.');
+      return false;
+    }
     if (enEspera(tipo)) { aviso('ti-clock', 'Ya avisamos al personal.<br>En un momento te atienden.'); return false; }
     let ok = false;
     if (conRpc) {
@@ -244,9 +255,13 @@
   }
 
   // ---- Tiempo real: si está disponible la página se actualiza al instante; si no, consulta cada 10 s ----
-  function iniciarTiempoReal() {
-    if (!pedidoId) return;
+  // Solo sirve con una base sin supabase/acceso_publico.sql (con las funciones
+  // públicas el cliente no ve las tablas y no le llega nada). Por eso supabase-js
+  // se descarga solo en ese caso.
+  async function iniciarTiempoReal() {
+    if (!pedidoId || conRpc) return;
     try {
+      const { clienteAnonimo } = await import('../lib/supabase.js');
       const cli = clienteAnonimo();
       let t = null;
       const refrescar = () => { clearTimeout(t); t = setTimeout(loadPedido, 250); };
@@ -262,20 +277,24 @@
   onMount(() => {
     // El permiso de notificaciones se pide al tocar un botón, no al abrir
     if ('Notification' in window && Notification.permission === 'granted') permiso = true;
-    fetchTasas().then(loadPedido);
-    iniciarTiempoReal();
-    // Respaldo: cada 10 s sin tiempo real; cada 60 s con tiempo real (tasa y borrados)
+    // El pedido trae su tasa: no hace falta esperar a dolarapi para mostrarlo
+    fetchTasas();
+    loadPedido().then(iniciarTiempoReal);
+    // Se consulta cada 10 s (cada 60 s si hay tiempo real), y nada mientras la
+    // pestaña está oculta. La tasa cambia una vez al día: se pide cada 30 min.
     let vueltas = 0;
     const respaldo = setInterval(async () => {
+      if (document.hidden) return;
       vueltas++;
-      // Con las funciones públicas el cliente ya no ve las tablas, así que el
-      // tiempo real no le llega nada: se consulta siempre cada 10 s.
+      if (vueltas % 180 === 0) fetchTasas();
       if (tiempoReal && !conRpc && vueltas % 6 !== 0) return;
-      await fetchTasas(); await loadPedido();
+      await loadPedido();
     }, 10000);
+    const alVolver = () => { if (!document.hidden) loadPedido(); };
+    document.addEventListener('visibilitychange', alVolver);
     const reloj = setInterval(() => { ahora = Date.now(); }, 1000);
     window.__licor = { ...(window.__licor || {}), loadPedido };
-    return () => { clearInterval(respaldo); clearInterval(reloj); };
+    return () => { clearInterval(respaldo); clearInterval(reloj); document.removeEventListener('visibilitychange', alVolver); };
   });
 </script>
 
@@ -287,6 +306,7 @@
     </div>
     <div class="live-badge" class:cobrado={pedido && !abierto} id="live-badge">
       {#if cobrado}<i class="ti ti-check"></i> Cobrado
+      {:else if cancelado}Cancelado
       {:else if pedido && !abierto}Cerrado
       {:else}<span class="live-dot"></span> En vivo{/if}
     </div>
@@ -305,8 +325,14 @@
       <div class="cliente-header">
         <div class="avatar lg">{ini(pedido.cliente_nombre)}</div>
         <div class="cliente-nombre">{pedido.cliente_nombre}</div>
-        <div class="cliente-sub">{etiquetaMesa(pedido) ? etiquetaMesa(pedido) + ' · ' : ''}{abierto ? 'Pedido activo' : 'Pedido cerrado'}</div>
+        <div class="cliente-sub">{etiquetaMesa(pedido) ? etiquetaMesa(pedido) + ' · ' : ''}{abierto ? 'Pedido activo' : cancelado ? 'Pedido cancelado' : 'Pedido cerrado'}</div>
       </div>
+
+      {#if cancelado}
+        <div class="banner aviso" id="pedido-cancelado" role="status" style="display:flex">
+          <i class="ti ti-info-circle"></i> El personal canceló este pedido. Si tienes dudas sobre la cuenta, pregúntales directamente.
+        </div>
+      {/if}
 
       {#if cobrado}
         <div class="cobrado-banner">

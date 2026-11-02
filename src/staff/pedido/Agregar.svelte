@@ -45,7 +45,7 @@
           {#each filtrado.filter(m => (m.categoria || 'General') === cat) as m (m.id)}
             {@const n = ped.seleccion[m.id] || 0}
             <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-            <div class="menu-grid-item" class:seleccionado={n} data-id={m.id} onclick={() => tocarProducto(m.id, 1)}>
+            <div class="menu-grid-item" class:seleccionado={n} data-id={m.id} role="button" tabindex="0" aria-pressed={!!n} onkeydown={ev => (ev.key === 'Enter' || ev.key === ' ') && (ev.preventDefault(), ev.currentTarget.click())} onclick={() => tocarProducto(m.id, 1)}>
               {#if n}
                 <span class="mgi-cant">{n}</span>
                 <button class="mgi-menos" onclick={ev => { ev.stopPropagation(); tocarProducto(m.id, -1); }} aria-label="Quitar uno">−</button>

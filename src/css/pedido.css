@@ -23,7 +23,7 @@ body.cliente-body {
   display: flex; align-items: center; gap: 6px; flex-shrink: 0;
   padding: 5px 11px; border-radius: var(--radio-pill);
   font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
-  background: var(--error-suave); color: var(--error);
+  background: var(--ok-suave); color: var(--ok);
 }
 .live-badge.cobrado { background: var(--ok-suave); color: var(--ok); }
 .live-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: pulso 1.5s infinite; }
@@ -175,11 +175,11 @@ a.btn { text-decoration: none; }
 .carta-precio { margin-top: auto; padding-top: 6px; font-size: 18px; font-weight: 800; color: var(--acento); display: flex; flex-direction: column; }
 .carta-precio span { font-size: 11.5px; font-weight: 600; color: var(--apagado); }
 .carta-combo { font-size: 11px; color: var(--tinta-suave); }
-.carta-item.agotado { opacity: .55; }
+.carta-item.agotado .carta-foto { opacity: .5; }   /* se atenúa la foto, no el texto (contraste) */
 .carta-agotado {
   position: absolute; top: 8px; left: 8px;
   padding: 3px 9px; border-radius: var(--radio-pill);
-  background: var(--error); color: #fff; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  background: var(--error); color: var(--sobre-error); font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
 }
 @media (min-width: 640px) { .carta-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
@@ -193,3 +193,12 @@ a.btn { text-decoration: none; }
 .estado-aviso.espera { background: var(--aviso-suave); color: var(--aviso); border: 1px solid color-mix(in srgb, var(--aviso) 35%, transparent); }
 .estado-aviso.ok { background: var(--ok-suave); color: var(--ok); border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent); animation: aparecer-aviso .3s ease-out; }
 @keyframes aparecer-aviso { from { transform: scale(.97); opacity: .3; } }
+
+/* ---------- Áreas táctiles: mínimo 44 px (mesoneros con prisa y poca luz) ---------- */
+.btn { min-height: 44px; }
+.btn.sm { min-height: 40px; }
+.btn.sm.ico, .btn.ico { min-width: 44px; min-height: 44px; }
+.icon-btn { width: 44px; height: 44px; }
+.cbtn { width: 44px; height: 44px; }
+.itab { min-height: 44px; }
+.mtbtn { min-height: 36px; }

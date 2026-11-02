@@ -165,6 +165,7 @@ test('dueño: usuarios pendientes se activan, y los reportes y la marca funciona
 });
 
 test('el tema claro se recuerda', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });   // teléfono en oscuro: se elige claro a mano
   await entrar(page);
   await page.click('#dark-btn');
   await expect(page.locator('html')).toHaveAttribute('data-tema', 'claro');
