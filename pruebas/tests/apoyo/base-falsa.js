@@ -60,7 +60,7 @@ class BaseFalsa {
     return filas.map(r => {
       const o = { ...r };
       if (t === 'pedidos' && sel.includes('pedido_items')) o.pedido_items = this.db.pedido_items.filter(i => i.pedido_id === r.id);
-      if (t === 'solicitudes' && sel.includes('pedidos(')) { const p = this.db.pedidos.find(x => x.id === r.pedido_id); o.pedidos = { cliente_nombre: p?.cliente_nombre, mesa: p?.mesa ?? null }; }
+      if (t === 'solicitudes' && sel.includes('pedidos(')) { const p = this.db.pedidos.find(x => x.id === r.pedido_id); o.pedidos = p ? { cliente_nombre: p.cliente_nombre, mesa: p.mesa ?? null, estado: p.estado } : null; }
       return o;
     });
   }

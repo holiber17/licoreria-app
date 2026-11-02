@@ -153,3 +153,27 @@ test('con consumo servido, un empleado no puede cancelar el pedido', async ({ pa
   await expect(page.locator('.toast.error')).toContainText('solo el dueño');
   expect(base.db.pedidos[0].estado).toBe('abierto');
 });
+
+test('al cobrar un pedido, su aviso de "Quiere pagar" deja de estar pendiente', async ({ page }) => {
+  await abrirPedido(page, 'Mesa 3');
+  await page.click('#tab-agregar');
+  await page.locator('.menu-grid-item', { hasText: 'Whisky' }).click();
+  await page.click('#barra-agregar-btn');
+  const pedido = base.db.pedidos[0];
+  base.db.solicitudes.push({ id: 'q2', sucursal_id: 's1', pedido_id: pedido.id, tipo: 'pagar', metodo: 'Pago móvil', estado: 'pendiente', created_at: new Date().toISOString() });
+  await page.evaluate(() => window.__licor.cargarSolicitudes());
+
+  await page.locator('#s-detalle .top-bar .btn.primary').click();
+  await page.click('[id="mp-Pago móvil"]');
+  await page.click('#btn-confirmar-cobro');
+  await expect(page.locator('#s-lista')).toHaveClass(/active/);
+  await expect(page.locator('#solicitudes-panel')).toBeHidden();
+  await expect.poll(() => base.db.solicitudes[0].estado).toBe('atendida');
+});
+
+test('un aviso que quedó pendiente de un pedido ya cobrado no aparece en el panel', async ({ page }) => {
+  base.db.pedidos.push({ id: 'pv', sucursal_id: 's1', cliente_nombre: 'Viejo', estado: 'cobrado', created_at: new Date().toISOString() });
+  base.db.solicitudes.push({ id: 'q3', sucursal_id: 's1', pedido_id: 'pv', tipo: 'pagar', estado: 'pendiente', created_at: new Date().toISOString() });
+  await page.evaluate(() => window.__licor.cargarSolicitudes());
+  await expect(page.locator('#solicitudes-panel')).toBeHidden();
+});
