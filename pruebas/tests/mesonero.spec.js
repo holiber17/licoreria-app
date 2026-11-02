@@ -93,8 +93,8 @@ test('la hoja de cobro exige el método y registra el elegido; el doble toque co
   await expect(page.locator('#btn-confirmar-cobro')).toContainText('Pago móvil');
   await page.evaluate(() => { const b = document.getElementById('btn-confirmar-cobro'); b.click(); b.click(); b.click(); });
 
-  await expect(page.locator('#sec-caja')).toHaveClass(/active/);
-  expect(base.rpcs('cobrar_pedido')).toHaveLength(1);
+  await expect(page.locator('#s-lista')).toHaveClass(/active/);   // sigue en Pedidos
+  await expect.poll(() => base.rpcs('cobrar_pedido').length).toBe(1);
   expect(base.db.caja).toHaveLength(1);
   expect(base.db.caja[0]).toMatchObject({ total_usd: 42, metodo_pago: 'Pago móvil' });
 });
@@ -113,10 +113,57 @@ test('los avisos de clientes aparecen en el panel y en la tarjeta del pedido', a
   const pedido = base.db.pedidos[0];
   base.db.solicitudes.push({ id: 'q1', sucursal_id: 's1', pedido_id: pedido.id, tipo: 'pagar', metodo: 'Zelle', estado: 'pendiente', created_at: new Date().toISOString() });
   await page.locator('#s-detalle .top-bar .btn.ghost').click();
-  await page.evaluate(() => cargarSolicitudes());
+  await page.evaluate(() => window.__licor.cargarSolicitudes());
   await expect(page.locator('#solicitudes-panel .solicitud')).toHaveCount(1);
   await expect(page.locator(`.cli-card[data-pedido="${pedido.id}"] .aviso-tarjeta`)).toContainText('Quiere pagar');
   await page.locator('#solicitudes-panel .solicitud .btn').click();
   await expect(page.locator('#solicitudes-panel')).toBeHidden();
   expect(base.db.solicitudes[0].estado).toBe('atendida');
+});
+
+test('la mesa se guarda aparte del nombre y se ve en la tarjeta del pedido', async ({ page }) => {
+  await page.locator('#s-lista .top-bar .btn.primary').click();
+  await page.fill('#nuevo-nombre', 'Carlos');
+  await page.fill('#nuevo-mesa', '4');
+  await page.locator('#form-nuevo .btn.primary').click();
+  await expect(page.locator('#s-detalle')).toHaveClass(/active/);
+  expect(base.db.pedidos[0]).toMatchObject({ cliente_nombre: 'Carlos', mesa: '4' });
+  await expect(page.locator('#det-nombre')).toHaveText('Carlos · Mesa 4');
+  await page.locator('#s-detalle .top-bar .btn.ghost').click();
+  await expect(page.locator('.cli-card .mesa-tag')).toContainText('Mesa 4');
+});
+
+test('cancelar sin consumo deja escrito quién lo canceló', async ({ page }) => {
+  await abrirPedido(page, 'Mesa 7');
+  await page.click('#tab-cuenta');
+  await page.click('text=Cancelar pedido sin cobrar');
+  await expect.poll(() => base.db.pedidos[0].estado).toBe('cancelado');
+  expect(base.db.pedidos[0].nota).toContain('Cancelado por');
+  expect(base.db.pedidos[0].nota).toContain('Pedro Barra');
+});
+
+test('con consumo servido, un empleado no puede cancelar el pedido', async ({ page }) => {
+  await abrirPedido(page, 'Mesa 8');
+  await page.click('#tab-agregar');
+  await page.locator('.menu-grid-item', { hasText: 'Ron Cacique' }).click();
+  await page.click('#barra-agregar-btn');
+  await expect(page.locator('#mt-consumo')).toBeVisible();
+  await page.click('#tab-cuenta');
+  await page.click('text=Cancelar pedido sin cobrar');
+  await expect(page.locator('.toast.error')).toContainText('solo el dueño');
+  expect(base.db.pedidos[0].estado).toBe('abierto');
+});
+
+test('sin la columna mesa en la base: la mesa va en el nombre y los avisos siguen llegando', async ({ page }) => {
+  base.sinColumnas = ['mesa'];
+  await page.locator('#s-lista .top-bar .btn.primary').click();
+  await page.fill('#nuevo-nombre', 'Carlos');
+  await page.fill('#nuevo-mesa', '4');
+  await page.locator('#form-nuevo .btn.primary').click();
+  await expect(page.locator('#s-detalle')).toHaveClass(/active/);
+  expect(base.db.pedidos[0].cliente_nombre).toBe('Carlos · Mesa 4');
+  base.db.solicitudes.push({ id: 'sx', sucursal_id: 's1', pedido_id: base.db.pedidos[0].id, tipo: 'mesonero', estado: 'pendiente', created_at: new Date().toISOString() });
+  await page.locator('#s-detalle .top-bar .btn.ghost').click();
+  await page.evaluate(() => window.__licor?.cargarSolicitudes?.());
+  await expect(page.locator('#solicitudes-panel')).toContainText('Carlos · Mesa 4', { timeout: 20000 });
 });

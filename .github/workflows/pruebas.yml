@@ -6,25 +6,50 @@ on:
     branches: [main]
 
 jobs:
-  navegador:
+  # Dinero, fechas y mensajes (funciones puras, en segundos)
+  unitarias:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: pruebas
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
-          cache-dependency-path: pruebas/package-lock.json
-      - name: Instalar dependencias
+      - run: npm ci
+      - run: npm test
+
+  # El SQL de supabase/ en un Postgres de prueba (nunca toca Supabase)
+  sql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/prueba-sql.sh
+
+  navegador:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            pruebas/package-lock.json
+      - name: Compilar la app
+        run: npm ci && npm run build
+      - name: Instalar dependencias de las pruebas
         run: npm ci
+        working-directory: pruebas
       - name: Instalar Chromium
         run: npx playwright install --with-deps chromium
+        working-directory: pruebas
       - name: Correr pruebas
         run: npx playwright test
+        working-directory: pruebas
       - name: Guardar reporte si algo falla
         if: failure()
         uses: actions/upload-artifact@v4

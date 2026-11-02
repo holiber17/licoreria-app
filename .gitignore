@@ -1,0 +1,9 @@
+node_modules
+dist
+pruebas/node_modules
+pruebas/playwright-report
+pruebas/test-results
+
+# Generados por scripts/iconos.mjs antes de dev/build
+src/css/iconos.css
+src/css/iconos.woff2
