@@ -1,5 +1,5 @@
 import { mount } from 'svelte';
-import '@tabler/icons-webfont/tabler-icons.min.css';
+import '../css/iconos.css';   // solo los iconos usados (scripts/iconos.mjs)
 import '../css/tokens.css';
 import '../css/base.css';
 import '../css/componentes.css';

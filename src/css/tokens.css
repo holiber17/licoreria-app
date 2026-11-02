@@ -17,7 +17,9 @@
   /* Texto */
   --tinta: #f4ece1;
   --tinta-suave: #c2b4a1;
-  --apagado: #857866;
+  --apagado: #9a8c78;          /* 5,0:1 sobre superficie-2 (antes 3,8) */
+  --linea-campo: #7f705c;      /* borde de campos: 3:1 (WCAG 1.4.11) */
+  --sobre-error: #1a1208;      /* texto sobre fondo --error */
 
   /* Marca */
   --acento: #d9a54a;
@@ -70,17 +72,19 @@
 
   --tinta: #1f1812;
   --tinta-suave: #5c4e3f;
-  --apagado: #8a7b69;
+  --apagado: #6f6252;
+  --linea-campo: #8c7b63;
+  --sobre-error: #fff;
 
-  --acento: #9c6a1c;
-  --acento-hover: #7f5513;
+  --acento: #85590f;           /* 5:1 sobre el fondo crema (antes 3,8) */
+  --acento-hover: #6e490b;
   --acento-tinta: #fffaf0;
   --acento-suave: rgba(156, 106, 28, .1);
   --vino: #7a2434;
 
   --ok: #2c7048;
   --ok-suave: rgba(44, 112, 72, .1);
-  --aviso: #a8560c;
+  --aviso: #96490a;
   --aviso-suave: rgba(168, 86, 12, .1);
   --error: #b02a32;
   --error-suave: rgba(176, 42, 50, .09);

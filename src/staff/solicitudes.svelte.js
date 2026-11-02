@@ -1,6 +1,7 @@
 // Avisos de los clientes (desde la página del QR): "Llamar al mesonero" y "Quiero pagar".
 // Necesita la tabla `solicitudes` (supabase/cliente.sql).
-import { sb, LOGO_URL } from '../lib/config.js';
+import { LOGO_URL } from '../lib/config.js';
+import { sb } from '../lib/supabase.js';
 import { rest, restPatch } from '../lib/api.js';
 import { e } from '../lib/estado.svelte.js';
 import { sonidoAlerta, feedback } from '../lib/sonidos.js';
@@ -31,7 +32,8 @@ export function iniciarSolicitudes() {
   iniciarTiempoReal();
   timer = setInterval(() => {
     vueltas++;
-    if (!tiempoRealActivo || vueltas % 4 === 0) cargarSolicitudes();
+    // Sin tiempo real la lista de pedidos tampoco se entera de cambios: se refresca también
+    if (!tiempoRealActivo || vueltas % 4 === 0) { cargarSolicitudes(); if (!tiempoRealActivo) e.versionPedidos++; }
   }, 15000);
 }
 

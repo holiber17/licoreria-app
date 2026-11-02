@@ -1,10 +1,11 @@
 <script>
   import { onMount } from 'svelte';
-  import { LOGO_URL, clienteAnonimo } from '../lib/config.js';
+  import { LOGO_URL } from '../lib/config.js';
   import { anonGet, anonInsert, anonRpc } from '../lib/api.js';
   import { ini, etiquetaMesa } from '../lib/catalogo.js';
   import { toastAlerta, esc } from '../lib/avisos.svelte.js';
   import { tasas, fetchTasas, fmtUSD, fmtBs } from './comun.svelte.js';
+  import { bs, bsParaCopiar, repartir } from '../lib/dinero.js';
   import ProdImg from '../ui/ProdImg.svelte';
   import Hoja from '../ui/Hoja.svelte';
   import Toasts from '../ui/Toasts.svelte';
@@ -51,9 +52,16 @@
   // ---- Datos ----
   const items = $derived(pedido?.pedido_items || []);
   const totalUSD = $derived(items.reduce((s, i) => s + i.consumido * i.precio_usd, 0));
-  const tasaPedido = $derived(parseFloat(pedido?.tasa_bcv) || tasas.usd);
   const abierto = $derived(pedido?.estado === 'abierto');
   const cobrado = $derived(pedido?.estado === 'cobrado');
+  const cancelado = $derived(pedido?.estado === 'cancelado');
+  // Si el pedido se cierra mientras el cliente tiene abierta la hoja de pago, se cierra la hoja
+  $effect(() => { if (pedido && !abierto) pagoAbierto = false; });
+  // Abierto: la tasa de hoy de la sucursal, la misma con la que se va a cobrar.
+  // Cobrado: la tasa con la que se cobró. Sin ninguna, 0 ("Bs —").
+  const tasaPedido = $derived(cobrado
+    ? (parseFloat(pedido?.tasa_bcv) || 0)
+    : (parseFloat(pedido?.tasa_actual) || tasas.usd || parseFloat(pedido?.tasa_bcv) || 0));
   const nombreNegocio = $derived(sucursal ? (sucursal.app_nombre || sucursal.nombre) : '');
   $effect(() => { document.title = 'Mi pedido — ' + (nombreNegocio || 'LicorApp'); });
   let logoRoto = $state(false);
@@ -87,6 +95,10 @@
     // Solo este pedido, vía funciones de Supabase (supabase/acceso_publico.sql).
     // Si la base aún no las tiene (404), se lee como antes.
     let p;
+    // Los avisos se piden a la vez que el pedido (no uno detrás del otro)
+    const avisosPendientes = conRpc
+      ? anonRpc('avisos_de_pedido', { p: pedidoId }).then(r => r.data)
+      : anonGet('solicitudes?select=id,tipo,estado,created_at,atendida_at&pedido_id=eq.' + encodeURIComponent(pedidoId) + '&order=created_at.desc&limit=10');
     if (conRpc) {
       const r = await anonRpc('pedido_publico', { p: pedidoId });
       if (r.status === 404) conRpc = false;
@@ -99,13 +111,13 @@
       p = data[0];
     }
     if (!p) { estado = 'noEncontrado'; return; }
-    await cargarNegocio(p.sucursal_id);
-    avisos = (conRpc
-      ? (await anonRpc('avisos_de_pedido', { p: pedidoId })).data
-      : await anonGet('solicitudes?select=id,tipo,estado,created_at,atendida_at&pedido_id=eq.' + encodeURIComponent(pedidoId) + '&order=created_at.desc&limit=10')) || [];
-    avisarSiAtendieron();
+    // El pedido se muestra ya; los avisos llegan enseguida y el negocio (logo,
+    // datos de pago, íconos) se carga detrás sin frenar el primer pintado
     pedido = p; estado = 'ok';
     checkNotifCliente(p.pedido_items || []);
+    cargarNegocio(p.sucursal_id);
+    avisos = (await avisosPendientes) || [];
+    avisarSiAtendieron();
   }
 
   // ---- Estado de los avisos ("Ya vienen") ----
@@ -134,7 +146,11 @@
 
   // ---- Solicitudes al personal ----
   async function enviarSolicitud(tipo, metodo, referencia) {
-    if (!pedido || pedido.estado !== 'abierto') return false;
+    if (!pedido || pedido.estado !== 'abierto') {
+      pagoAbierto = false;
+      aviso('ti-info-circle', 'Este pedido ya está cerrado.<br>Si tienes dudas, pregúntale al personal.');
+      return false;
+    }
     if (enEspera(tipo)) { aviso('ti-clock', 'Ya avisamos al personal.<br>En un momento te atienden.'); return false; }
     let ok = false;
     if (conRpc) {
@@ -174,8 +190,12 @@
     metodoElegido = disponibles.length === 1 ? disponibles[0].clave : (disponibles.find(m => m.clave !== 'efectivo')?.clave || 'efectivo');
     pagoAbierto = true;
   }
-  const porPersona = $derived(totalUSD / partes);
-  const montoBs = $derived(Math.round(porPersona * tasaPedido));
+  // Repartido en centavos y céntimos para que las partes sumen exacto el total
+  const partesUSD = $derived(repartir(totalUSD, partes));
+  const partesBs = $derived(repartir(totalUSD * tasaPedido, partes));
+  const porPersona = $derived(partesUSD[0]);
+  const montoBs = $derived(partesBs[0]);
+  const desiguales = $derived(partes > 1 && partesUSD[0] !== partesUSD[partes - 1]);
   const metodo = $derived(METODOS.find(x => x.clave === metodoElegido) || METODOS[3]);
   const datosMetodo = $derived((sucursal?.datos_pago || {})[metodo.clave] || {});
   const camposConDatos = $derived(metodo.campos.filter(([k]) => String(datosMetodo[k] || '').trim()));
@@ -235,9 +255,13 @@
   }
 
   // ---- Tiempo real: si está disponible la página se actualiza al instante; si no, consulta cada 10 s ----
-  function iniciarTiempoReal() {
-    if (!pedidoId) return;
+  // Solo sirve con una base sin supabase/acceso_publico.sql (con las funciones
+  // públicas el cliente no ve las tablas y no le llega nada). Por eso supabase-js
+  // se descarga solo en ese caso.
+  async function iniciarTiempoReal() {
+    if (!pedidoId || conRpc) return;
     try {
+      const { clienteAnonimo } = await import('../lib/supabase.js');
       const cli = clienteAnonimo();
       let t = null;
       const refrescar = () => { clearTimeout(t); t = setTimeout(loadPedido, 250); };
@@ -253,20 +277,24 @@
   onMount(() => {
     // El permiso de notificaciones se pide al tocar un botón, no al abrir
     if ('Notification' in window && Notification.permission === 'granted') permiso = true;
-    fetchTasas().then(loadPedido);
-    iniciarTiempoReal();
-    // Respaldo: cada 10 s sin tiempo real; cada 60 s con tiempo real (tasa y borrados)
+    // El pedido trae su tasa: no hace falta esperar a dolarapi para mostrarlo
+    fetchTasas();
+    loadPedido().then(iniciarTiempoReal);
+    // Se consulta cada 10 s (cada 60 s si hay tiempo real), y nada mientras la
+    // pestaña está oculta. La tasa cambia una vez al día: se pide cada 30 min.
     let vueltas = 0;
     const respaldo = setInterval(async () => {
+      if (document.hidden) return;
       vueltas++;
-      // Con las funciones públicas el cliente ya no ve las tablas, así que el
-      // tiempo real no le llega nada: se consulta siempre cada 10 s.
+      if (vueltas % 180 === 0) fetchTasas();
       if (tiempoReal && !conRpc && vueltas % 6 !== 0) return;
-      await fetchTasas(); await loadPedido();
+      await loadPedido();
     }, 10000);
+    const alVolver = () => { if (!document.hidden) loadPedido(); };
+    document.addEventListener('visibilitychange', alVolver);
     const reloj = setInterval(() => { ahora = Date.now(); }, 1000);
     window.__licor = { ...(window.__licor || {}), loadPedido };
-    return () => { clearInterval(respaldo); clearInterval(reloj); };
+    return () => { clearInterval(respaldo); clearInterval(reloj); document.removeEventListener('visibilitychange', alVolver); };
   });
 </script>
 
@@ -278,6 +306,7 @@
     </div>
     <div class="live-badge" class:cobrado={pedido && !abierto} id="live-badge">
       {#if cobrado}<i class="ti ti-check"></i> Cobrado
+      {:else if cancelado}Cancelado
       {:else if pedido && !abierto}Cerrado
       {:else}<span class="live-dot"></span> En vivo{/if}
     </div>
@@ -296,8 +325,14 @@
       <div class="cliente-header">
         <div class="avatar lg">{ini(pedido.cliente_nombre)}</div>
         <div class="cliente-nombre">{pedido.cliente_nombre}</div>
-        <div class="cliente-sub">{etiquetaMesa(pedido) ? etiquetaMesa(pedido) + ' · ' : ''}{abierto ? 'Pedido activo' : 'Pedido cerrado'}</div>
+        <div class="cliente-sub">{etiquetaMesa(pedido) ? etiquetaMesa(pedido) + ' · ' : ''}{abierto ? 'Pedido activo' : cancelado ? 'Pedido cancelado' : 'Pedido cerrado'}</div>
       </div>
+
+      {#if cancelado}
+        <div class="banner aviso" id="pedido-cancelado" role="status" style="display:flex">
+          <i class="ti ti-info-circle"></i> El personal canceló este pedido. Si tienes dudas sobre la cuenta, pregúntales directamente.
+        </div>
+      {/if}
 
       {#if cobrado}
         <div class="cobrado-banner">
@@ -354,7 +389,10 @@
         </div>
       {/if}
 
-      <div class="pie-tasa">Tasa BCV del pedido: Bs {tasaPedido.toFixed(2)} por $</div>
+      <div class="pie-tasa" id="pie-tasa">
+        {#if !tasaPedido}Sin tasa BCV por ahora: pregunta el monto en Bs al personal
+        {:else}{cobrado ? 'Tasa BCV del cobro' : 'Tasa BCV de hoy'}: Bs {bs(tasaPedido)} por ${/if}
+      </div>
       {#if pedido.sucursal_id}
         <a class="btn full" href="carta.html?s={encodeURIComponent(pedido.sucursal_id)}"><i class="ti ti-book"></i> Ver la carta y precios</a>
       {/if}
@@ -369,7 +407,10 @@
     <div class="pago-total">
       <div class="t-mini">{partes > 1 ? `Cada persona paga (entre ${partes})` : 'Total a pagar'}</div>
       <div class="pago-usd">{fmtUSD(porPersona)}</div>
-      <div class="pago-bs">Bs {montoBs.toLocaleString('es-VE')}</div>
+      <div class="pago-bs">{tasaPedido ? 'Bs ' + bs(montoBs) : 'Bs — · pregunta el monto al personal'}</div>
+      {#if desiguales}
+        <div class="t-mini" id="pago-reparto">Para que cuadre: {partesUSD.filter(v => v === partesUSD[0]).length} {partesUSD.filter(v => v === partesUSD[0]).length === 1 ? 'paga' : 'pagan'} {fmtUSD(partesUSD[0])} y {partesUSD.filter(v => v !== partesUSD[0]).length} {fmtUSD(partesUSD[partes - 1])}</div>
+      {/if}
     </div>
     <div class="dividir">
       <span><i class="ti ti-users"></i> Dividir la cuenta</span>
@@ -389,7 +430,7 @@
     {#if camposConDatos.length}
       <div class="datos-pago">
         {#each camposConDatos as [k, etiqueta] (k)}<FilaCopiable {etiqueta} valor={String(datosMetodo[k]).trim()} />{/each}
-        {#if metodo.bs}<FilaCopiable etiqueta="Monto en Bs" valor={String(montoBs)} />
+        {#if metodo.bs}{#if tasaPedido}<FilaCopiable etiqueta="Monto en Bs" valor={bsParaCopiar(montoBs)} />{/if}
         {:else}<FilaCopiable etiqueta="Monto en $" valor={porPersona.toFixed(2)} />{/if}
       </div>
     {:else if metodo.clave === 'efectivo'}

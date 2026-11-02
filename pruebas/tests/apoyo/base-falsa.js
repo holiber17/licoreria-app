@@ -28,17 +28,25 @@ function datosIniciales() {
     ],
     pedidos: [], pedido_items: [], caja: [], solicitudes: [], clientes: [],
     inventario: [{ id: 'v1', sucursal_id: 's1', menu_id: 'm2', nombre: 'Ron Cacique 500 años', stock_actual: 10, stock_minimo: 3, unidad: 'botella' }],
-    tasas_bcv: [], inventario_movimientos: []
+    tasas_bcv: [], inventario_movimientos: [], pedido_ajustes: [], turnos: []
   };
 }
 
 class BaseFalsa {
   constructor() { this.db = datosIniciales(); this.llamadas = []; this.n = 100; }
   id(p) { return p + (this.n++); }
+  // Última tasa guardada de la sucursal (como privado.tasa_vigente)
+  tasaVigente(suc) {
+    const t = this.db.tasas_bcv.filter(x => x.sucursal_id === suc && x.tasa > 0);
+    return t.length ? t[t.length - 1].tasa : null;
+  }
 
   filtrar(filas, sp) {
     for (const [k, v] of sp.entries()) {
       if (['select', 'order', 'limit', 'offset'].includes(k)) continue;
+      // is.null / not.is.null (turnos abiertos o cerrados)
+      if (v === 'is.null') { filas = filas.filter(r => r[k] == null); continue; }
+      if (v === 'not.is.null') { filas = filas.filter(r => r[k] != null); continue; }
       const m = /^(eq|gte|in)\.(.*)$/.exec(v); if (!m) continue;
       const [, op, val] = m;
       filas = filas.filter(r => op === 'eq' ? String(r[k]) === val
@@ -66,14 +74,14 @@ class BaseFalsa {
       const p = db.pedidos.find(x => x.id === b.p);
       if (!p) return { json: null };
       const { nota, usuario_id, cliente_id, ...pub } = p;
-      return { json: { mesa: null, ...pub, pedido_items: db.pedido_items.filter(i => i.pedido_id === p.id) } };
+      return { json: { mesa: null, ...pub, tasa_actual: this.tasaVigente(p.sucursal_id), pedido_items: db.pedido_items.filter(i => i.pedido_id === p.id) } };
     }
     if (fn === 'avisos_de_pedido') {
       return { json: db.solicitudes.filter(s => s.pedido_id === b.p).slice().reverse().slice(0, 10).map(({ id, tipo, estado, created_at, atendida_at }) => ({ id, tipo, estado, created_at, atendida_at })) };
     }
     if (fn === 'sucursal_publica') {
       const s = db.sucursales.find(x => x.id === b.p);
-      return { json: s ? { id: s.id, nombre: s.nombre, app_nombre: s.app_nombre, logo_url: s.logo_url, ciudad: s.ciudad, direccion: s.direccion, datos_pago: s.datos_pago } : null };
+      return { json: s ? { id: s.id, nombre: s.nombre, app_nombre: s.app_nombre, logo_url: s.logo_url, ciudad: s.ciudad, direccion: s.direccion, datos_pago: s.datos_pago, tasa_actual: this.tasaVigente(s.id) } : null };
     }
     if (fn === 'crear_solicitud') {
       const p = db.pedidos.find(x => x.id === b.p_pedido && x.estado === 'abierto');
@@ -100,15 +108,55 @@ class BaseFalsa {
       }
       return { json: out };
     }
+    // supabase/dinero.sql: servir y sumar unidades con sumas en la base
+    if (fn === 'servir') {
+      const it = db.pedido_items.find(i => i.id === b.p_item);
+      const p = it && db.pedidos.find(x => x.id === it.pedido_id);
+      const n = it ? it.consumido + b.p_delta : -1;
+      if (!it || p.estado !== 'abierto' || n < 0 || (it.tipo !== 'suelto' && n > it.total)) return { status: 400, json: { message: 'No se pudo servir: el pedido cambió o ya no está abierto' } };
+      it.consumido = n; if (it.tipo === 'suelto') it.total = n;
+      return { json: { ...it } };
+    }
+    if (fn === 'sumar_unidades') {
+      const it = db.pedido_items.find(i => i.id === b.p_item);
+      if (!it || !(b.p_unidades >= 1)) return { status: 400, json: { message: 'Cantidad inválida' } };
+      it.total += b.p_unidades;
+      return { json: { ...it } };
+    }
     if (fn === 'cobrar_pedido') {
       const p = db.pedidos.find(x => x.id === b.p_pedido);
       if (!p || p.estado !== 'abierto') return { status: 400, json: { message: 'Este pedido ya fue cobrado o cancelado' } };
       const its = db.pedido_items.filter(i => i.pedido_id === p.id && i.consumido > 0);
       if (!its.length) return { status: 400, json: { message: 'No hay nada consumido aún' } };
+      // La tasa del día de la sucursal manda; si no hay, la del teléfono (> 0); si no, no cobra
+      const tasa = this.tasaVigente(p.sucursal_id) || (b.p_tasa > 0 ? b.p_tasa : null);
+      if (!tasa) return { status: 400, json: { message: 'No hay tasa BCV del día. El dueño debe ponerla a mano antes de cobrar.' } };
       const total = Math.round(its.reduce((s, i) => s + i.consumido * i.precio_usd, 0) * 100) / 100;
-      p.estado = 'cobrado';
-      db.caja.push({ id: this.id('c'), sucursal_id: p.sucursal_id, pedido_id: p.id, cliente_nombre: p.cliente_nombre, total_usd: total, tasa_bcv: b.p_tasa, metodo_pago: b.p_metodo, nota: b.p_nota || null, fecha: new Date().toISOString() });
-      return { json: { caja_id: 'c', total_usd: total } };
+      p.estado = 'cobrado'; p.tasa_bcv = tasa;
+      const turno = db.turnos.find(t => t.sucursal_id === p.sucursal_id && !t.cerrado_at);
+      db.caja.push({ id: this.id('c'), sucursal_id: p.sucursal_id, pedido_id: p.id, cliente_nombre: p.cliente_nombre, total_usd: total, tasa_bcv: tasa, metodo_pago: b.p_metodo, nota: b.p_nota || null, fecha: new Date().toISOString(), turno_id: turno ? turno.id : null });
+      return { json: { caja_id: 'c', total_usd: total, tasa_bcv: tasa, turno_id: turno ? turno.id : null } };
+    }
+    // supabase/turnos.sql: abrir y cerrar turno (misma cuenta que la base)
+    if (fn === 'abrir_turno') {
+      if (db.turnos.some(t => t.sucursal_id === b.p_sucursal && !t.cerrado_at)) return { status: 400, json: { message: 'Ya hay un turno abierto en esta sucursal' } };
+      const t = { id: this.id('t'), sucursal_id: b.p_sucursal, abierto_por: 'u2', abierto_at: new Date().toISOString(), fondo_usd: b.p_fondo_usd || 0, fondo_bs: b.p_fondo_bs || 0, cerrado_at: null };
+      db.turnos.push(t);
+      return { json: { ...t } };
+    }
+    if (fn === 'cerrar_turno') {
+      const t = db.turnos.find(x => x.id === b.p_turno);
+      if (!t || t.cerrado_at) return { status: 400, json: { message: 'Este turno ya está cerrado' } };
+      const esp = {};
+      db.caja.filter(c => c.turno_id === t.id).forEach(c => {
+        const k = c.metodo_pago || 'Efectivo';
+        (esp[k] ||= { usd: 0, bs: 0, pedidos: 0 }); esp[k].usd += c.total_usd; esp[k].bs += c.total_usd * c.tasa_bcv; esp[k].pedidos++;
+      });
+      const tasa = this.tasaVigente(t.sucursal_id), c = b.p_contado, g = (m, f) => (esp[m] ? esp[m][f] : 0);
+      let dif = (c.efectivo_usd + c.efectivo_bs / tasa) - (g('Efectivo', 'usd') + t.fondo_usd + t.fondo_bs / tasa);
+      dif += (c.pago_movil_bs - g('Pago móvil', 'bs')) / tasa + (c.transferencia_bs - g('Transferencia', 'bs')) / tasa + c.zelle_usd - g('Zelle', 'usd');
+      Object.assign(t, { cerrado_at: new Date().toISOString(), esperado: esp, contado: c, diferencia_usd: Math.round(dif * 100) / 100, tasa_cierre: tasa, nota: b.p_nota });
+      return { json: { ...t } };
     }
     if (fn === 'mover_stock') {
       const inv = db.inventario.find(i => i.id === b.p_inventario);
@@ -126,6 +174,11 @@ class BaseFalsa {
     const metodo = req.method();
     const body = req.postData() ? JSON.parse(req.postData()) : null;
     this.llamadas.push({ metodo, tabla: t, body });
+    // Fallas simuladas: base.fallar = { leer: ['caja'], escribir: ['menu'], rpc: { cobrar_pedido: {status, message} } }
+    const f = this.fallar || {};
+    if (t.startsWith('rpc/') && f.rpc && f.rpc[t.slice(4)]) { const e = f.rpc[t.slice(4)]; return { status: e.status || 400, json: { message: e.message } }; }
+    if (metodo === 'GET' && (f.leer || []).includes(t)) return { status: 500, json: { message: 'falla simulada' } };
+    if (metodo !== 'GET' && (f.escribir || []).includes(t)) return { status: 401, json: { message: 'falla simulada' } };
     if (t.startsWith('rpc/')) return this.rpc(t.slice(4), body);
     // Simula una base sin migrar: pedir o escribir una de estas columnas da 400
     const faltan = this.sinColumnas || [];
@@ -181,6 +234,8 @@ async function conectar(context, base) {
       if (r.status === 204) return route.fulfill({ status: 204, body: '' });
       return route.fulfill({ status: r.status || 200, json: r.json });
     }
+    // base.sinDolarapi: dolarapi caído
+    if (url.includes('dolarapi.com') && base.sinDolarapi) return route.fulfill({ status: 503, body: '' });
     if (url.includes('dolarapi.com/v1/dolares/oficial')) return route.fulfill({ json: { promedio: 187.35, fechaActualizacion: new Date().toISOString() } });
     if (url.includes('dolarapi.com/v1/cotizaciones')) return route.fulfill({ json: [{ moneda: 'EUR', promedio: 215.8 }] });
     return route.fulfill({ status: 404, body: '' });

@@ -2,6 +2,7 @@
   import { ped, cerrarCobro, cobrarPedido } from '../pedido.svelte.js';
   import { fmtUSD, fmtBs, fmtEUR, tasaEur, totalDe } from '../../lib/formato.svelte.js';
   import { ocupado } from '../../lib/avisos.svelte.js';
+  import { e } from '../../lib/estado.svelte.js';
   import Hoja from '../../ui/Hoja.svelte';
 
   let nota = $state('');
@@ -16,6 +17,9 @@
     <div class="cobro-usd" id="cobro-usd">{fmtUSD(total)}</div>
     <div class="t-sub" id="cobro-bs">{fmtBs(total)}{tasaEur() ? ' · ' + fmtEUR(total) : ''}</div>
   </div>
+  {#if !e.tasaBCV}
+    <p class="t-sub t-error" id="cobro-sin-tasa"><i class="ti ti-alert-triangle"></i> No hay tasa BCV de hoy. Si la sucursal tampoco la tiene guardada, el cobro no pasará: pídele al dueño que la ponga a mano.</p>
+  {/if}
   <div class="fg">
     <!-- svelte-ignore a11y_label_has_associated_control -->
     <label>¿Cómo pagó?</label>

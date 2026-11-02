@@ -4,12 +4,13 @@
   import Usuarios from './admin/Usuarios.svelte';
   import Reportes from './admin/Reportes.svelte';
   import Empleados from './admin/Empleados.svelte';
+  import Auditoria from './admin/Auditoria.svelte';
 
   const activa = $derived(e.seccion === 'admin');
   let tab = $state('sucursales');
   // Al volver a Admin se empieza en Sucursales, como antes
   $effect(() => { if (activa) tab = 'sucursales'; });
-  const tabs = [['sucursales', 'Sucursales'], ['usuarios', 'Usuarios'], ['reportes', 'Reportes'], ['empleados', 'Empleados']];
+  const tabs = [['sucursales', 'Sucursales'], ['usuarios', 'Usuarios'], ['reportes', 'Reportes'], ['empleados', 'Empleados'], ['auditoria', 'Auditoría']];
 </script>
 
 <section id="sec-admin" class="sec" class:active={activa}>
@@ -23,5 +24,6 @@
     {#if tab === 'usuarios'}<Usuarios />{/if}
     {#if tab === 'reportes'}<Reportes />{/if}
     {#if tab === 'empleados'}<Empleados />{/if}
+    {#if tab === 'auditoria'}<Auditoria />{/if}
   {/if}
 </section>

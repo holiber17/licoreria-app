@@ -4,7 +4,8 @@
   import { e, setMoneda, esDueno } from '../lib/estado.svelte.js';
   import { tema, alternarTema } from '../lib/tema.svelte.js';
   import { doLogout } from './sesion.svelte.js';
-  import { fetchBCV } from './tasas.svelte.js';
+  import { fetchBCV, ponerTasaManual } from './tasas.svelte.js';
+  import { showToast, conexion } from '../lib/avisos.svelte.js';
   import { loadMenu } from './menu.svelte.js';
   import { iniciarSolicitudes, detenerSolicitudes } from './solicitudes.svelte.js';
   import { pedirPermisoNotif } from './notificaciones.js';
@@ -18,6 +19,14 @@
 
   const nombre = $derived(e.sucursal?.app_nombre || e.sucursal?.nombre || 'LicorApp');
   let logoRoto = $state(false);
+
+  // El dueño puede fijar la tasa del día; es la que usa el cobro y la que ve el cliente
+  async function corregirTasa() {
+    const v = prompt('Tasa BCV de hoy (Bs por 1 $):', e.tasaBCV ? e.tasaBCV.toFixed(2) : '');
+    if (v === null) return;
+    if (await ponerTasaManual(v)) showToast('Tasa del día guardada ✓');
+    else showToast('Tasa no válida o no se pudo guardar', 'danger');
+  }
   let pantallaCompleta = $state(false);
 
   const secciones = $derived([
@@ -35,6 +44,7 @@
 
   // La pestaña activa se acerca al centro de la barra
   $effect(() => { document.getElementById('gnav-' + e.seccion)?.scrollIntoView?.({ block: 'nearest', inline: 'center', behavior: 'smooth' }); });
+  $effect(() => { e.seccion; window.scrollTo(0, 0); });
 
   onMount(() => {
     pedirPermisoNotif();
@@ -86,7 +96,7 @@
     </div>
     <nav class="nav-tabs">
       {#each secciones as s (s.id)}
-        <button class="nav-tab" class:active={e.seccion === s.id} id="gnav-{s.id}" onclick={() => (e.seccion = s.id)}>
+        <button class="nav-tab" class:active={e.seccion === s.id} id="gnav-{s.id}" aria-current={e.seccion === s.id ? 'page' : undefined} onclick={() => (e.seccion = s.id)}>
           <i class="ti {s.icono}"></i> {s.texto}
           {#if s.id === 'pedidos' && e.solicitudes.length}<span class="nav-badge">{e.solicitudes.length}</span>{/if}
         </button>
@@ -95,11 +105,24 @@
   </header>
 
   <main class="content" class:en-pedido={e.seccion === 'pedidos' && e.pedidoAbierto}>
+    {#if conexion.fallo}
+      <div class="banner {conexion.fallo === 'sesion' ? 'error' : 'aviso'}" id="aviso-conexion" role="alert" style="display:flex">
+        <i class="ti {conexion.fallo === 'red' ? 'ti-wifi-off' : 'ti-alert-triangle'}"></i>
+        <span class="crece">{conexion.fallo === 'red' ? 'Sin conexión a internet: lo que ves puede estar desactualizado o incompleto.'
+          : conexion.fallo === 'sesion' ? 'Tu sesión venció. Sal y vuelve a entrar para seguir.'
+          : 'No se pudieron cargar algunos datos. Lo que ves puede estar incompleto.'}</span>
+        {#if conexion.fallo === 'sesion'}<button class="btn sm" onclick={doLogout}>Salir</button>
+        {:else}<button class="btn sm" onclick={() => location.reload()}>Reintentar</button>{/if}
+      </div>
+    {/if}
     <div class="tbar">
       <div class="tasas">
         <span class="rblk" title="Bolívares por 1 USD"><i class="ti ti-currency-dollar"></i><span class="moneda-cod">USD</span><input id="tasa-input" type="text" value={e.tasaBCV.toFixed(2)} readonly tabindex="-1" aria-readonly="true" /></span>
         <span class="rblk" title="Bolívares por 1 EUR"><i class="ti ti-currency-euro"></i><span class="moneda-cod">EUR</span><input id="tasa-eur-input" type="text" value={e.tasaEUR.toFixed(2)} readonly tabindex="-1" aria-readonly="true" /></span>
         <span id="tbadge" class="tbadge {e.tasaEstado.clase}"><i class="ti {e.tasaEstado.icono}"></i> {e.tasaEstado.texto}</span>
+        {#if esDueno()}
+          <button class="btn sm ghost ico" id="btn-tasa-manual" onclick={corregirTasa} aria-label="Poner la tasa BCV a mano" title="Poner la tasa BCV a mano"><i class="ti ti-pencil"></i></button>
+        {/if}
       </div>
       <div class="moneda-sel">
         <span>Mostrar en</span>

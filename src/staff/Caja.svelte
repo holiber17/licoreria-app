@@ -1,16 +1,18 @@
 <script>
-  import { LOGO_URL, sb } from '../lib/config.js';
+  import { LOGO_URL } from '../lib/config.js';
+  import { sb } from '../lib/supabase.js';
   import { e, nombreNegocio } from '../lib/estado.svelte.js';
-  import { restGet } from '../lib/api.js';
   import { fmtUSD, fmtBsCon, fmtBsTotal, resumenCaja, agruparItems } from '../lib/formato.svelte.js';
   import { fmtHora } from '../lib/catalogo.js';
-  import { showToast } from '../lib/avisos.svelte.js';
+  import { marcarLectura } from '../lib/avisos.svelte.js';
   import { descargarPDF, abrirWhatsApp } from './comprobantes.js';
   import Reporte from '../ui/Reporte.svelte';
   import Monto from '../ui/Monto.svelte';
   import Ranking from '../ui/Ranking.svelte';
   import Nota from '../ui/Nota.svelte';
   import Hoja from '../ui/Hoja.svelte';
+  import Turno from './Turno.svelte';
+  import { hoyCaracas, inicioDia } from '../lib/fechas.js';
 
   const activa = $derived(e.seccion === 'caja');
   let tab = $state('historial');
@@ -22,24 +24,31 @@
   const r = $derived(resumenCaja(registros));
   const ranking = $derived(agruparItems(itemsVendidos).sort((a, b) => b.total - a.total));
 
+  // Con turno abierto la caja muestra lo cobrado en el turno (aunque pase de
+  // medianoche); sin turno, lo cobrado desde las 12 a.m. de hoy en Caracas.
+  let turno = $state(null);
+  let cerrados = $state([]);
+  const desdeHoy = () => inicioDia(hoyCaracas());
+
   async function cargar() {
     if (!e.sucursal) return;
-    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-    const { data: caja } = await sb.from('caja').select('*').eq('sucursal_id', e.sucursal.id).gte('fecha', hoy.toISOString()).order('fecha', { ascending: false });
+    const [{ data: t }, { data: ult }] = await Promise.all([
+      sb.from('turnos').select('*').eq('sucursal_id', e.sucursal.id).is('cerrado_at', null).maybeSingle(),
+      sb.from('turnos').select('*').eq('sucursal_id', e.sucursal.id).not('cerrado_at', 'is', null).order('cerrado_at', { ascending: false }).limit(10),
+    ]);
+    turno = t || null; cerrados = ult || [];
+    let q = sb.from('caja').select('*').eq('sucursal_id', e.sucursal.id);
+    q = turno ? q.eq('turno_id', turno.id) : q.gte('fecha', desdeHoy());
+    const { data: caja, error, status } = await q.order('fecha', { ascending: false });
+    marcarLectura(!error, status);
     registros = caja || [];
     const ids = registros.map(x => x.pedido_id).filter(Boolean);
     itemsVendidos = ids.length ? (await sb.from('pedido_items').select('*').in('pedido_id', ids)).data || [] : [];
   }
   $effect(() => { if (activa) cargar(); });
 
-  function nuevaJornada() {
-    if (!confirm('¿Iniciar nueva jornada?')) return;
-    showToast('Nueva jornada iniciada'); cargar();
-  }
-
   async function generarPDF() {
-    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-    const caja = await restGet('caja?select=*&sucursal_id=eq.' + e.sucursal.id + '&fecha=gte.' + hoy.toISOString() + '&order=fecha.asc');
+    const caja = [...registros].reverse();
     const fecha = new Date().toLocaleDateString('es-VE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) + ' · ' + fmtHora(new Date());
     pdf = { caja, r: resumenCaja(caja), fecha };
   }
@@ -50,16 +59,17 @@
 </script>
 
 <section id="sec-caja" class="sec" class:active={activa}>
-  <div class="top-bar"><h2>Caja del día</h2>
+  <div class="top-bar"><h2>{turno ? 'Caja del turno' : 'Caja del día'}</h2>
     <div class="acciones">
       <button class="btn sm" onclick={generarPDF}><i class="ti ti-file-text"></i> PDF</button>
-      <button class="btn sm danger" onclick={nuevaJornada}><i class="ti ti-refresh"></i> Nueva jornada</button>
     </div>
   </div>
+  <Turno {turno} {registros} alCambiar={cargar} />
   <div class="g2" id="caja-metrics"><Reporte {r} pedidos="Pedidos cobrados" /></div>
   <div class="itabs">
     <button class="itab" class:active={tab === 'historial'} id="ctab-historial" onclick={() => (tab = 'historial')}><i class="ti ti-history"></i> Historial</button>
     <button class="itab" class:active={tab === 'productos'} id="ctab-productos" onclick={() => (tab = 'productos')}><i class="ti ti-bottle"></i> Por producto</button>
+    <button class="itab" class:active={tab === 'turnos'} id="ctab-turnos" onclick={() => (tab = 'turnos')}><i class="ti ti-lock"></i> Turnos</button>
   </div>
   {#if tab === 'historial'}
     <div id="cmt-historial"><div id="caja-historial">
@@ -78,6 +88,25 @@
         {/each}
       {/if}
     </div></div>
+  {:else if tab === 'turnos'}
+    <div id="cmt-turnos">
+      {#if !cerrados.length}<div class="empty"><i class="ti ti-lock"></i>Todavía no hay turnos cerrados.</div>
+      {:else}
+        {#each cerrados as t (t.id)}
+          {@const d = parseFloat(t.diferencia_usd || 0)}
+          {@const ventas = Object.values(t.esperado || {}).reduce((s, v) => s + parseFloat(v.usd || 0), 0)}
+          <div class="hcard">
+            <div class="fila arriba entre">
+              <div class="crece">
+                <div class="t-fuerte">{new Date(t.abierto_at).toLocaleString('es-VE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} → {fmtHora(new Date(t.cerrado_at))}</div>
+                <div class="t-sub">Ventas {fmtUSD(ventas)}{t.nota ? ' · ' + t.nota : ''}</div>
+              </div>
+              <div class="t-fuerte" class:t-ok={Math.abs(d) < 0.01} class:t-error={d <= -0.01}>{Math.abs(d) < 0.01 ? 'Cuadra' : (d < 0 ? '−' : '+') + fmtUSD(Math.abs(d))}</div>
+            </div>
+          </div>
+        {/each}
+      {/if}
+    </div>
   {:else}
     <div id="cmt-productos"><div class="card"><div id="caja-productos">
       {#if !registros.length}<Nota>Sin ventas registradas.</Nota>
@@ -86,7 +115,7 @@
     </div></div></div>
   {/if}
 
-  <Hoja id="pdf-modal-caja" abierto={!!pdf} alCerrar={() => (pdf = null)} titulo="Reporte del día">
+  <Hoja id="pdf-modal-caja" abierto={!!pdf} alCerrar={() => (pdf = null)} titulo={turno ? "Reporte del turno" : "Reporte del día"}>
     {#if pdf}
       <div id="pdf-content-caja" class="pdf-preview" bind:this={contenedor}>
         <div class="pdf-header">
@@ -108,7 +137,7 @@
           </div>
         {/each}
         <div class="pdf-total">
-          <span>TOTAL DEL DÍA</span>
+          <span>{turno ? "TOTAL DEL TURNO" : "TOTAL DEL DÍA"}</span>
           <div class="der"><div>{fmtUSD(pdf.r.totalUSD)}</div><div class="bs">{fmtBsTotal(pdf.r.totalBs)}</div></div>
         </div>
         <div class="pdf-footer">Generado el {new Date().toLocaleString('es-VE')} · {nombreNegocio()}</div>

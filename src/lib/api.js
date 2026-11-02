@@ -1,5 +1,6 @@
 // Acceso a Supabase por REST directo con el token de la sesión
 import { SUPA_URL, SUPA_KEY } from './config.js';
+import { marcarLectura } from './avisos.svelte.js';
 
 export function tokenKeyActual() {
   try { return Object.keys(localStorage).find(k => k.includes('auth-token') || k.includes('supabase')); }
@@ -21,9 +22,14 @@ export async function rest(path, { method = 'GET', body, prefer } = {}) {
   return fetch(SUPA_URL + '/rest/v1/' + path, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined });
 }
 
-// GET que devuelve siempre una lista (vacía si falla)
+// GET que devuelve siempre una lista (vacía si falla). Si falla, lo anota en
+// `conexion` para que la app avise en vez de mostrar "sin datos" como si nada.
 export async function restGet(path) {
-  try { const r = await rest(path); return r.ok ? await r.json() : []; } catch (e) { return []; }
+  try {
+    const r = await rest(path);
+    marcarLectura(r.ok, r.status);
+    return r.ok ? await r.json() : [];
+  } catch (e) { marcarLectura(false, 0); return []; }
 }
 export const restInsert = (tabla, datos, prefer = 'return=minimal') => rest(tabla, { method: 'POST', body: datos, prefer });
 export const restPatch = (tabla, id, datos) => rest(tabla + '?id=eq.' + id, { method: 'PATCH', body: datos, prefer: 'return=minimal' });

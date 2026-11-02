@@ -1,5 +1,5 @@
 <script>
-  import { sb } from '../../lib/config.js';
+  import { sb } from '../../lib/supabase.js';
   import { untrack } from 'svelte';
   import { e, nombreNegocio } from '../../lib/estado.svelte.js';
   import { rest, restGet, restInsert, restPatch } from '../../lib/api.js';
@@ -46,12 +46,25 @@
     marca.url = e.sucursal?.logo_url || '';
     vistaArchivo = '';
   }
+  // El logo viaja en cada apertura de la app, la carta y el pedido: se reduce a
+  // 256 px (WebP, ~10 KB) antes de guardarlo, en vez de guardar la foto entera.
   function elegirArchivo(ev) {
     const f = ev.currentTarget.files[0];
     if (!f) return;
-    const lector = new FileReader();
-    lector.onload = x => { logoBase64 = x.target.result; vistaArchivo = logoBase64; marca.url = ''; };
-    lector.readAsDataURL(f);
+    const img = new Image();
+    const url = URL.createObjectURL(f);
+    img.onload = () => {
+      const lado = 256, k = Math.min(1, lado / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      logoBase64 = c.toDataURL('image/webp', 0.85);
+      if (!logoBase64.startsWith('data:image/webp')) logoBase64 = c.toDataURL('image/png');
+      vistaArchivo = logoBase64; marca.url = '';
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); showToast('No se pudo leer la imagen', 'danger'); };
+    img.src = url;
   }
   function alEscribirUrl() { logoBase64 = null; vistaArchivo = ''; }
   const imagenVista = $derived(vistaArchivo || marca.url.trim());
@@ -149,21 +162,31 @@
       const datos = JSON.parse(await file.text());
       if (!datos.version || !datos.menu) { backup = { clase: 'error', icono: 'ti-alert-triangle', texto: 'Archivo inválido: no es un backup de LicorApp' }; return; }
       if (!confirm(`¿Importar backup de "${datos.negocio}" del ${new Date(datos.fecha).toLocaleDateString('es-VE')}?\n\nEsto restaurará ${datos.menu.length} productos del menú.\n\nLos productos actuales NO se borrarán, solo se agregarán los nuevos.`)) return;
-      let importados = 0;
-      // Importar solo productos que no existan
-      const actuales = await restGet('menu?select=nombre&sucursal_id=eq.' + e.sucursal.id);
-      const nombres = new Set(actuales.map(m => m.nombre.toLowerCase()));
+      let importados = 0, reactivados = 0, fallidos = 0;
+      // Productos nuevos se agregan; los que existían pero se habían quitado del menú se reactivan.
+      // Cada escritura se revisa: solo se cuenta lo que la base aceptó.
+      const actuales = await restGet('menu?select=id,nombre,activo&sucursal_id=eq.' + e.sucursal.id);
+      const porNombre = new Map(actuales.map(m => [m.nombre.toLowerCase(), m]));
       for (const prod of datos.menu) {
-        if (!nombres.has(prod.nombre.toLowerCase())) {
-          await restInsert('menu', {
+        const ya = porNombre.get(String(prod.nombre).toLowerCase());
+        let r;
+        if (!ya) {
+          r = await restInsert('menu', {
             sucursal_id: e.sucursal.id, nombre: prod.nombre, tipo: prod.tipo, precio_usd: prod.precio_usd,
             unidades_combo: prod.unidades_combo, unidad: prod.unidad, categoria: prod.categoria, imagen_url: prod.imagen_url || null, activo: true,
           });
-          importados++;
+          if (r.ok) importados++; else fallidos++;
+        } else if (ya.activo === false) {
+          r = await restPatch('menu', ya.id, { activo: true });
+          if (r.ok) reactivados++; else fallidos++;
         }
       }
       await loadMenu();
-      backup = { clase: 'ok', icono: 'ti-check', texto: `Importación completada: ${importados} productos nuevos agregados` };
+      const partes = [`${importados} ${importados === 1 ? 'producto nuevo' : 'productos nuevos'}`];
+      if (reactivados) partes.push(`${reactivados} ${reactivados === 1 ? 'reactivado' : 'reactivados'}`);
+      backup = fallidos
+        ? { clase: 'error', icono: 'ti-alert-triangle', texto: `Importación incompleta: ${partes.join(', ')}; ${fallidos} no se pudieron guardar. Revisa la conexión e intenta de nuevo.` }
+        : { clase: 'ok', icono: 'ti-check', texto: `Importación completada: ${partes.join(', ')}` };
       input.value = '';
     } catch (err) {
       backup = { clase: 'error', icono: 'ti-alert-triangle', texto: 'Error al importar: archivo corrupto o inválido' };

@@ -100,7 +100,7 @@
   width: 100%;
   padding: 11px 13px;
   border-radius: var(--radio-s);
-  border: 1px solid var(--linea-fuerte);
+  border: 1px solid var(--linea-campo);
   background: var(--superficie);
   color: var(--tinta);
   font-size: 15px;
@@ -296,7 +296,8 @@
   background: var(--superficie-3); color: var(--tinta);
   border: 1px solid var(--linea-fuerte);
   box-shadow: var(--sombra-2);
-  white-space: nowrap; max-width: calc(100vw - 32px);
+  white-space: normal; max-width: min(360px, calc(100vw - 32px)); width: max-content;
+  border-radius: var(--radio-m); line-height: 1.35; cursor: pointer;
   animation: aparecer .2s ease-out;
 }
 .toast.ok i { color: var(--ok); }

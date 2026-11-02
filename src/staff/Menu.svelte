@@ -1,6 +1,6 @@
 <script>
   import { e } from '../lib/estado.svelte.js';
-  import { sb } from '../lib/config.js';
+  import { sb } from '../lib/supabase.js';
   import { restPatch } from '../lib/api.js';
   import { loadMenu } from './menu.svelte.js';
   import { fmtPrice } from '../lib/formato.svelte.js';

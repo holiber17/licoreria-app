@@ -1,5 +1,5 @@
 <script>
-  import { sb } from '../lib/config.js';
+  import { sb } from '../lib/supabase.js';
   import { e } from '../lib/estado.svelte.js';
   import { restGet, restInsert, restPatch, restDelete } from '../lib/api.js';
   import { feedback } from '../lib/sonidos.js';
