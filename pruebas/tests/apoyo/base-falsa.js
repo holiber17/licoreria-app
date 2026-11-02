@@ -28,7 +28,7 @@ function datosIniciales() {
     ],
     pedidos: [], pedido_items: [], caja: [], solicitudes: [], clientes: [],
     inventario: [{ id: 'v1', sucursal_id: 's1', menu_id: 'm2', nombre: 'Ron Cacique 500 años', stock_actual: 10, stock_minimo: 3, unidad: 'botella' }],
-    tasas_bcv: [], inventario_movimientos: [], pedido_ajustes: []
+    tasas_bcv: [], inventario_movimientos: [], pedido_ajustes: [], turnos: []
   };
 }
 
@@ -44,6 +44,9 @@ class BaseFalsa {
   filtrar(filas, sp) {
     for (const [k, v] of sp.entries()) {
       if (['select', 'order', 'limit', 'offset'].includes(k)) continue;
+      // is.null / not.is.null (turnos abiertos o cerrados)
+      if (v === 'is.null') { filas = filas.filter(r => r[k] == null); continue; }
+      if (v === 'not.is.null') { filas = filas.filter(r => r[k] != null); continue; }
       const m = /^(eq|gte|in)\.(.*)$/.exec(v); if (!m) continue;
       const [, op, val] = m;
       filas = filas.filter(r => op === 'eq' ? String(r[k]) === val
@@ -130,8 +133,30 @@ class BaseFalsa {
       if (!tasa) return { status: 400, json: { message: 'No hay tasa BCV del día. El dueño debe ponerla a mano antes de cobrar.' } };
       const total = Math.round(its.reduce((s, i) => s + i.consumido * i.precio_usd, 0) * 100) / 100;
       p.estado = 'cobrado'; p.tasa_bcv = tasa;
-      db.caja.push({ id: this.id('c'), sucursal_id: p.sucursal_id, pedido_id: p.id, cliente_nombre: p.cliente_nombre, total_usd: total, tasa_bcv: tasa, metodo_pago: b.p_metodo, nota: b.p_nota || null, fecha: new Date().toISOString() });
-      return { json: { caja_id: 'c', total_usd: total, tasa_bcv: tasa } };
+      const turno = db.turnos.find(t => t.sucursal_id === p.sucursal_id && !t.cerrado_at);
+      db.caja.push({ id: this.id('c'), sucursal_id: p.sucursal_id, pedido_id: p.id, cliente_nombre: p.cliente_nombre, total_usd: total, tasa_bcv: tasa, metodo_pago: b.p_metodo, nota: b.p_nota || null, fecha: new Date().toISOString(), turno_id: turno ? turno.id : null });
+      return { json: { caja_id: 'c', total_usd: total, tasa_bcv: tasa, turno_id: turno ? turno.id : null } };
+    }
+    // supabase/turnos.sql: abrir y cerrar turno (misma cuenta que la base)
+    if (fn === 'abrir_turno') {
+      if (db.turnos.some(t => t.sucursal_id === b.p_sucursal && !t.cerrado_at)) return { status: 400, json: { message: 'Ya hay un turno abierto en esta sucursal' } };
+      const t = { id: this.id('t'), sucursal_id: b.p_sucursal, abierto_por: 'u2', abierto_at: new Date().toISOString(), fondo_usd: b.p_fondo_usd || 0, fondo_bs: b.p_fondo_bs || 0, cerrado_at: null };
+      db.turnos.push(t);
+      return { json: { ...t } };
+    }
+    if (fn === 'cerrar_turno') {
+      const t = db.turnos.find(x => x.id === b.p_turno);
+      if (!t || t.cerrado_at) return { status: 400, json: { message: 'Este turno ya está cerrado' } };
+      const esp = {};
+      db.caja.filter(c => c.turno_id === t.id).forEach(c => {
+        const k = c.metodo_pago || 'Efectivo';
+        (esp[k] ||= { usd: 0, bs: 0, pedidos: 0 }); esp[k].usd += c.total_usd; esp[k].bs += c.total_usd * c.tasa_bcv; esp[k].pedidos++;
+      });
+      const tasa = this.tasaVigente(t.sucursal_id), c = b.p_contado, g = (m, f) => (esp[m] ? esp[m][f] : 0);
+      let dif = (c.efectivo_usd + c.efectivo_bs / tasa) - (g('Efectivo', 'usd') + t.fondo_usd + t.fondo_bs / tasa);
+      dif += (c.pago_movil_bs - g('Pago móvil', 'bs')) / tasa + (c.transferencia_bs - g('Transferencia', 'bs')) / tasa + c.zelle_usd - g('Zelle', 'usd');
+      Object.assign(t, { cerrado_at: new Date().toISOString(), esperado: esp, contado: c, diferencia_usd: Math.round(dif * 100) / 100, tasa_cierre: tasa, nota: b.p_nota });
+      return { json: { ...t } };
     }
     if (fn === 'mover_stock') {
       const inv = db.inventario.find(i => i.id === b.p_inventario);

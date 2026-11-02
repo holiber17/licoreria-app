@@ -7,6 +7,8 @@
   import Monto from '../../ui/Monto.svelte';
   import Ranking from '../../ui/Ranking.svelte';
   import Nota from '../../ui/Nota.svelte';
+  import { desde, desdeDia } from '../periodos.js';
+  import { diaCaracas } from '../../lib/fechas.js';
 
   const METODO_ICONOS = { 'Efectivo': 'ti-cash', 'Zelle': 'ti-building-bank', 'Pago móvil': 'ti-device-mobile', 'Transferencia': 'ti-arrows-exchange' };
   let periodo = $state('semana');
@@ -14,12 +16,9 @@
 
   async function cargar() {
     if (!e.sucursal) return;
-    const hoy = new Date();
-    const desde = new Date(hoy);
-    if (periodo === 'semana') desde.setDate(hoy.getDate() - 7); else desde.setDate(1);
-    const d = desde.toISOString().split('T')[0];
+    const d = desdeDia(periodo);
     const [c, t] = await Promise.all([
-      restGet('caja?select=*&sucursal_id=eq.' + e.sucursal.id + '&fecha=gte.' + d + 'T00:00:00&order=fecha.asc'),
+      restGet('caja?select=*&sucursal_id=eq.' + e.sucursal.id + '&fecha=gte.' + encodeURIComponent(desde(periodo)) + '&order=fecha.asc'),
       restGet('tasas_bcv?select=*&sucursal_id=eq.' + e.sucursal.id + '&fecha=gte.' + d + '&order=fecha.desc'),
     ]);
     caja = c; tasas = t;
@@ -40,7 +39,7 @@
   const dias = $derived.by(() => {
     const m = {};
     caja.forEach(p => {
-      const k = p.fecha.split('T')[0];
+      const k = diaCaracas(p.fecha);   // el día de la venta en Caracas, no en UTC
       (m[k] ||= { total: 0, pedidos: 0 }); m[k].total += parseFloat(p.total_usd || 0); m[k].pedidos++;
     });
     return Object.entries(m).sort((a, b) => b[0].localeCompare(a[0]));
