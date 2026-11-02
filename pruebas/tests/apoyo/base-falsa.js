@@ -33,7 +33,7 @@ function datosIniciales() {
 }
 
 class BaseFalsa {
-  constructor() { this.db = datosIniciales(); this.llamadas = []; this.n = 100; }
+  constructor() { this.db = datosIniciales(); this.llamadas = []; this.auth = []; this.n = 100; }
   id(p) { return p + (this.n++); }
   // Última tasa guardada de la sucursal (como privado.tasa_vigente)
   tasaVigente(suc) {
@@ -227,6 +227,9 @@ async function conectar(context, base) {
     if (url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com') || url.includes('api.qrserver.com')) {
       return route.continue().catch(() => route.abort());
     }
+    // Recuperar contraseña: pedir el enlace y guardar la nueva (se anotan en base.auth)
+    if (url.includes('/auth/v1/recover')) { base.auth.push({ tipo: 'recover', body: JSON.parse(req.postData() || '{}'), url }); return route.fulfill({ json: {} }); }
+    if (url.includes('/auth/v1/user') && req.method() === 'PUT') { base.auth.push({ tipo: 'clave', body: JSON.parse(req.postData() || '{}') }); return route.fulfill({ json: { id: 'u2', email: 'pedro@bodeguita.com', user_metadata: {} } }); }
     if (url.includes('/auth/v1/user')) return route.fulfill({ json: { id: 'u2', email: 'pedro@bodeguita.com', user_metadata: {} } });
     if (url.includes('/auth/v1/')) return route.fulfill({ status: 400, json: {} });
     if (url.includes('supabase.co/rest/v1/')) {

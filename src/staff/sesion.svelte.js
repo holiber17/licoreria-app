@@ -5,10 +5,73 @@ import { rest, supaFetch, getToken, tokenKeyActual } from '../lib/api.js';
 import { e } from '../lib/estado.svelte.js';
 import { showToast } from '../lib/avisos.svelte.js';
 
-export const acceso = $state({ modo: 'login', error: '' });
+// modo: login | registro | recuperar (pedir el enlace) | nueva (poner la contraseña nueva)
+export const acceso = $state({ modo: 'login', error: '', aviso: '', ocupado: false });
 
-export function verLogin() { acceso.modo = 'login'; acceso.error = ''; }
-export function verRegistro() { acceso.modo = 'registro'; acceso.error = ''; }
+export function verLogin() { acceso.modo = 'login'; acceso.error = ''; acceso.aviso = ''; }
+export function verRegistro() { acceso.modo = 'registro'; acceso.error = ''; acceso.aviso = ''; }
+export function verRecuperar() { acceso.modo = 'recuperar'; acceso.error = ''; acceso.aviso = ''; }
+
+// ---- Recuperar la contraseña ----
+// 1) Se pide un enlace al correo. El mensaje es el mismo exista o no la cuenta,
+//    para no revelar qué correos están registrados.
+export async function pedirEnlace(email) {
+  acceso.error = ''; acceso.aviso = '';
+  if (!email) { acceso.error = 'Escribe tu correo'; return; }
+  acceso.ocupado = true;
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+  acceso.ocupado = false;
+  if (error && /rate|seconds|limit/i.test(error.message)) { acceso.error = 'Pediste un enlace hace poco. Espera un minuto y vuelve a intentar.'; return; }
+  if (error) { acceso.error = 'No se pudo enviar el enlace. Intenta de nuevo.'; return; }
+  acceso.aviso = 'Si ese correo tiene cuenta, te llegará un enlace para poner una contraseña nueva. Revisa también la carpeta de spam.';
+}
+
+// 2) El enlace del correo vuelve a la app con la sesión en la dirección
+//    (#access_token=…&type=recovery). Mientras se pone la contraseña nueva no se
+//    entra a la app, aunque la sesión ya exista.
+let recuperando = false;
+async function revisarEnlaceDeCorreo() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (!h.has('type') && !h.has('error_code')) return false;
+  history.replaceState(null, '', location.pathname + location.search);   // sacar los tokens de la dirección
+  if (h.get('error_code')) {
+    acceso.modo = 'recuperar';
+    acceso.error = h.get('error_code') === 'otp_expired'
+      ? 'El enlace venció o ya se usó. Pide uno nuevo.'
+      : 'El enlace no es válido. Pide uno nuevo.';
+    e.pantalla = 'auth';
+    return true;
+  }
+  if (h.get('type') !== 'recovery' || !h.get('access_token')) return false;
+  recuperando = true;
+  const { error } = await sb.auth.setSession({ access_token: h.get('access_token'), refresh_token: h.get('refresh_token') || '' });
+  if (error) {
+    recuperando = false;
+    acceso.modo = 'recuperar'; acceso.error = 'El enlace venció o ya se usó. Pide uno nuevo.';
+  } else {
+    acceso.modo = 'nueva'; acceso.error = ''; acceso.aviso = '';
+  }
+  e.pantalla = 'auth';
+  return true;
+}
+
+export async function guardarClaveNueva(pass, repetir) {
+  acceso.error = '';
+  if (!pass || pass.length < 6) { acceso.error = 'La contraseña debe tener al menos 6 caracteres'; return; }
+  if (pass !== repetir) { acceso.error = 'Las dos contraseñas no coinciden'; return; }
+  acceso.ocupado = true;
+  const { data, error } = await sb.auth.updateUser({ password: pass });
+  acceso.ocupado = false;
+  if (error) {
+    acceso.error = /same|different/i.test(error.message) ? 'Usa una contraseña distinta a la anterior.' : 'No se pudo guardar. Pide un enlace nuevo e intenta otra vez.';
+    return;
+  }
+  recuperando = false;
+  showToast('Contraseña nueva guardada ✓');
+  acceso.modo = 'login';
+  e.pantalla = 'carga';
+  await initApp(data.user);
+}
 
 export async function doLogin(email, pass) {
   acceso.error = '';
@@ -127,8 +190,9 @@ async function boot() {
 export function iniciarSesion() {
   // Escuchar login/logout
   sb.auth.onAuthStateChange(async (evento, session) => {
+    if (recuperando) return;   // se está poniendo la contraseña nueva
     if (evento === 'SIGNED_IN' && session?.user) { e.pantalla = 'carga'; await initApp(session.user); }
     else if (evento === 'SIGNED_OUT') e.pantalla = 'auth';
   });
-  return boot();
+  return revisarEnlaceDeCorreo().then(viene => (viene ? undefined : boot()));
 }
