@@ -149,21 +149,31 @@
       const datos = JSON.parse(await file.text());
       if (!datos.version || !datos.menu) { backup = { clase: 'error', icono: 'ti-alert-triangle', texto: 'Archivo inválido: no es un backup de LicorApp' }; return; }
       if (!confirm(`¿Importar backup de "${datos.negocio}" del ${new Date(datos.fecha).toLocaleDateString('es-VE')}?\n\nEsto restaurará ${datos.menu.length} productos del menú.\n\nLos productos actuales NO se borrarán, solo se agregarán los nuevos.`)) return;
-      let importados = 0;
-      // Importar solo productos que no existan
-      const actuales = await restGet('menu?select=nombre&sucursal_id=eq.' + e.sucursal.id);
-      const nombres = new Set(actuales.map(m => m.nombre.toLowerCase()));
+      let importados = 0, reactivados = 0, fallidos = 0;
+      // Productos nuevos se agregan; los que existían pero se habían quitado del menú se reactivan.
+      // Cada escritura se revisa: solo se cuenta lo que la base aceptó.
+      const actuales = await restGet('menu?select=id,nombre,activo&sucursal_id=eq.' + e.sucursal.id);
+      const porNombre = new Map(actuales.map(m => [m.nombre.toLowerCase(), m]));
       for (const prod of datos.menu) {
-        if (!nombres.has(prod.nombre.toLowerCase())) {
-          await restInsert('menu', {
+        const ya = porNombre.get(String(prod.nombre).toLowerCase());
+        let r;
+        if (!ya) {
+          r = await restInsert('menu', {
             sucursal_id: e.sucursal.id, nombre: prod.nombre, tipo: prod.tipo, precio_usd: prod.precio_usd,
             unidades_combo: prod.unidades_combo, unidad: prod.unidad, categoria: prod.categoria, imagen_url: prod.imagen_url || null, activo: true,
           });
-          importados++;
+          if (r.ok) importados++; else fallidos++;
+        } else if (ya.activo === false) {
+          r = await restPatch('menu', ya.id, { activo: true });
+          if (r.ok) reactivados++; else fallidos++;
         }
       }
       await loadMenu();
-      backup = { clase: 'ok', icono: 'ti-check', texto: `Importación completada: ${importados} productos nuevos agregados` };
+      const partes = [`${importados} ${importados === 1 ? 'producto nuevo' : 'productos nuevos'}`];
+      if (reactivados) partes.push(`${reactivados} ${reactivados === 1 ? 'reactivado' : 'reactivados'}`);
+      backup = fallidos
+        ? { clase: 'error', icono: 'ti-alert-triangle', texto: `Importación incompleta: ${partes.join(', ')}; ${fallidos} no se pudieron guardar. Revisa la conexión e intenta de nuevo.` }
+        : { clase: 'ok', icono: 'ti-check', texto: `Importación completada: ${partes.join(', ')}` };
       input.value = '';
     } catch (err) {
       backup = { clase: 'error', icono: 'ti-alert-triangle', texto: 'Error al importar: archivo corrupto o inválido' };

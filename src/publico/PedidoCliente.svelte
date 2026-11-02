@@ -54,6 +54,9 @@
   const totalUSD = $derived(items.reduce((s, i) => s + i.consumido * i.precio_usd, 0));
   const abierto = $derived(pedido?.estado === 'abierto');
   const cobrado = $derived(pedido?.estado === 'cobrado');
+  const cancelado = $derived(pedido?.estado === 'cancelado');
+  // Si el pedido se cierra mientras el cliente tiene abierta la hoja de pago, se cierra la hoja
+  $effect(() => { if (pedido && !abierto) pagoAbierto = false; });
   // Abierto: la tasa de hoy de la sucursal, la misma con la que se va a cobrar.
   // Cobrado: la tasa con la que se cobró. Sin ninguna, 0 ("Bs —").
   const tasaPedido = $derived(cobrado
@@ -139,7 +142,11 @@
 
   // ---- Solicitudes al personal ----
   async function enviarSolicitud(tipo, metodo, referencia) {
-    if (!pedido || pedido.estado !== 'abierto') return false;
+    if (!pedido || pedido.estado !== 'abierto') {
+      pagoAbierto = false;
+      aviso('ti-info-circle', 'Este pedido ya está cerrado.<br>Si tienes dudas, pregúntale al personal.');
+      return false;
+    }
     if (enEspera(tipo)) { aviso('ti-clock', 'Ya avisamos al personal.<br>En un momento te atienden.'); return false; }
     let ok = false;
     if (conRpc) {
@@ -287,6 +294,7 @@
     </div>
     <div class="live-badge" class:cobrado={pedido && !abierto} id="live-badge">
       {#if cobrado}<i class="ti ti-check"></i> Cobrado
+      {:else if cancelado}Cancelado
       {:else if pedido && !abierto}Cerrado
       {:else}<span class="live-dot"></span> En vivo{/if}
     </div>
@@ -305,8 +313,14 @@
       <div class="cliente-header">
         <div class="avatar lg">{ini(pedido.cliente_nombre)}</div>
         <div class="cliente-nombre">{pedido.cliente_nombre}</div>
-        <div class="cliente-sub">{etiquetaMesa(pedido) ? etiquetaMesa(pedido) + ' · ' : ''}{abierto ? 'Pedido activo' : 'Pedido cerrado'}</div>
+        <div class="cliente-sub">{etiquetaMesa(pedido) ? etiquetaMesa(pedido) + ' · ' : ''}{abierto ? 'Pedido activo' : cancelado ? 'Pedido cancelado' : 'Pedido cerrado'}</div>
       </div>
+
+      {#if cancelado}
+        <div class="banner aviso" id="pedido-cancelado" role="status" style="display:flex">
+          <i class="ti ti-info-circle"></i> El personal canceló este pedido. Si tienes dudas sobre la cuenta, pregúntales directamente.
+        </div>
+      {/if}
 
       {#if cobrado}
         <div class="cobrado-banner">

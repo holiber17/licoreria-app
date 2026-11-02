@@ -3,6 +3,7 @@
   import { e, nombreNegocio } from '../lib/estado.svelte.js';
   import { fmtUSD, fmtBsCon, fmtBsTotal, resumenCaja, agruparItems } from '../lib/formato.svelte.js';
   import { fmtHora } from '../lib/catalogo.js';
+  import { marcarLectura } from '../lib/avisos.svelte.js';
   import { descargarPDF, abrirWhatsApp } from './comprobantes.js';
   import Reporte from '../ui/Reporte.svelte';
   import Monto from '../ui/Monto.svelte';
@@ -37,7 +38,8 @@
     turno = t || null; cerrados = ult || [];
     let q = sb.from('caja').select('*').eq('sucursal_id', e.sucursal.id);
     q = turno ? q.eq('turno_id', turno.id) : q.gte('fecha', desdeHoy());
-    const { data: caja } = await q.order('fecha', { ascending: false });
+    const { data: caja, error, status } = await q.order('fecha', { ascending: false });
+    marcarLectura(!error, status);
     registros = caja || [];
     const ids = registros.map(x => x.pedido_id).filter(Boolean);
     itemsVendidos = ids.length ? (await sb.from('pedido_items').select('*').in('pedido_id', ids)).data || [] : [];

@@ -1,4 +1,17 @@
-// Avisos flotantes (toasts) y acciones en curso
+// Avisos flotantes (toasts), estado de la conexión y acciones en curso
+
+// Si una lectura falló, la pantalla no debe decir "Sin ventas" como si nada:
+// la app del personal muestra un aviso arriba con lo que pasó.
+export const conexion = $state({ fallo: '' });
+export function marcarLectura(ok, status) {
+  if (ok) { conexion.fallo = ''; return; }
+  conexion.fallo = status === 401 ? 'sesion'
+    : (typeof navigator !== 'undefined' && navigator.onLine === false) || !status ? 'red' : 'servidor';
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('offline', () => { conexion.fallo = 'red'; });
+  window.addEventListener('online', () => { if (conexion.fallo === 'red') conexion.fallo = ''; });
+}
 export const avisos = $state({ lista: [] });
 let n = 0;
 

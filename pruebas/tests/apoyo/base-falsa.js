@@ -174,6 +174,11 @@ class BaseFalsa {
     const metodo = req.method();
     const body = req.postData() ? JSON.parse(req.postData()) : null;
     this.llamadas.push({ metodo, tabla: t, body });
+    // Fallas simuladas: base.fallar = { leer: ['caja'], escribir: ['menu'], rpc: { cobrar_pedido: {status, message} } }
+    const f = this.fallar || {};
+    if (t.startsWith('rpc/') && f.rpc && f.rpc[t.slice(4)]) { const e = f.rpc[t.slice(4)]; return { status: e.status || 400, json: { message: e.message } }; }
+    if (metodo === 'GET' && (f.leer || []).includes(t)) return { status: 500, json: { message: 'falla simulada' } };
+    if (metodo !== 'GET' && (f.escribir || []).includes(t)) return { status: 401, json: { message: 'falla simulada' } };
     if (t.startsWith('rpc/')) return this.rpc(t.slice(4), body);
     // Simula una base sin migrar: pedir o escribir una de estas columnas da 400
     const faltan = this.sinColumnas || [];

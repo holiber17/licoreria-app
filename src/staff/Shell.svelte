@@ -5,7 +5,7 @@
   import { tema, alternarTema } from '../lib/tema.svelte.js';
   import { doLogout } from './sesion.svelte.js';
   import { fetchBCV, ponerTasaManual } from './tasas.svelte.js';
-  import { showToast } from '../lib/avisos.svelte.js';
+  import { showToast, conexion } from '../lib/avisos.svelte.js';
   import { loadMenu } from './menu.svelte.js';
   import { iniciarSolicitudes, detenerSolicitudes } from './solicitudes.svelte.js';
   import { pedirPermisoNotif } from './notificaciones.js';
@@ -104,6 +104,16 @@
   </header>
 
   <main class="content" class:en-pedido={e.seccion === 'pedidos' && e.pedidoAbierto}>
+    {#if conexion.fallo}
+      <div class="banner {conexion.fallo === 'sesion' ? 'error' : 'aviso'}" id="aviso-conexion" role="alert" style="display:flex">
+        <i class="ti {conexion.fallo === 'red' ? 'ti-wifi-off' : 'ti-alert-triangle'}"></i>
+        <span class="crece">{conexion.fallo === 'red' ? 'Sin conexión a internet: lo que ves puede estar desactualizado o incompleto.'
+          : conexion.fallo === 'sesion' ? 'Tu sesión venció. Sal y vuelve a entrar para seguir.'
+          : 'No se pudieron cargar algunos datos. Lo que ves puede estar incompleto.'}</span>
+        {#if conexion.fallo === 'sesion'}<button class="btn sm" onclick={doLogout}>Salir</button>
+        {:else}<button class="btn sm" onclick={() => location.reload()}>Reintentar</button>{/if}
+      </div>
+    {/if}
     <div class="tbar">
       <div class="tasas">
         <span class="rblk" title="Bolívares por 1 USD"><i class="ti ti-currency-dollar"></i><span class="moneda-cod">USD</span><input id="tasa-input" type="text" value={e.tasaBCV.toFixed(2)} readonly tabindex="-1" aria-readonly="true" /></span>

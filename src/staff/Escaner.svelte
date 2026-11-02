@@ -37,9 +37,13 @@
         manual = true;
       }
     } catch (err) {
-      estado = 'No se pudo acceder a la cámara. Permite el acceso e intenta de nuevo.';
+      // Sin cámara (permiso negado, sin HTTPS, otro uso) queda el código escrito a mano
+      detener();
+      estado = 'No se pudo usar la cámara. Escribe el código:';
+      manual = true;
     }
   }
+  function reintentar() { manual = false; texto = ''; estado = 'Iniciando cámara...'; iniciar(); }
 
   function enviar(ev) {
     if (ev.key === 'Enter' && texto.trim()) { detener(); alCodigo(texto.trim()); }
@@ -54,6 +58,15 @@
   <video id="scanner-video" playsinline muted bind:this={video}></video>
   <div class="scanner-estado" id="scanner-status">
     {estado}
-    {#if manual}<input placeholder="Código de barra..." inputmode="numeric" bind:value={texto} onkeydown={enviar} />{/if}
+    {#if manual}
+      <!-- svelte-ignore a11y_autofocus -->
+      <input id="scanner-manual" placeholder="Código de barra..." inputmode="numeric" autofocus bind:value={texto} onkeydown={enviar} />
+      <div class="grupo-btn mt-s">
+        <button class="btn-claro" onclick={() => texto.trim() && (detener(), alCodigo(texto.trim()))}>Usar este código</button>
+        <button class="btn-claro" onclick={reintentar}>Reintentar cámara</button>
+      </div>
+    {:else}
+      <button class="btn-claro mt-s" id="scanner-escribir" onclick={() => { detener(); manual = true; estado = 'Escribe el código:'; }}>Escribir el código</button>
+    {/if}
   </div>
 </div>

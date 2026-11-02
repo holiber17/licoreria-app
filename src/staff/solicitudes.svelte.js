@@ -31,7 +31,8 @@ export function iniciarSolicitudes() {
   iniciarTiempoReal();
   timer = setInterval(() => {
     vueltas++;
-    if (!tiempoRealActivo || vueltas % 4 === 0) cargarSolicitudes();
+    // Sin tiempo real la lista de pedidos tampoco se entera de cambios: se refresca también
+    if (!tiempoRealActivo || vueltas % 4 === 0) { cargarSolicitudes(); if (!tiempoRealActivo) e.versionPedidos++; }
   }, 15000);
 }
 
