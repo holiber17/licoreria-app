@@ -12,6 +12,7 @@ Estado al 3 de noviembre de 2026. Todo está probado en un Postgres local con
 | `turnos.sql` (cierre de caja por turno; aplicado el 2 de noviembre de 2026) | `turnos` |
 | `cierre_publico.sql` (sin lectura pública directa; solo el dueño cancela con consumo; aplicado el 2 de noviembre de 2026, después de publicar la versión Svelte) | `cierre_publico` |
 | `negocios.sql` (negocios y rol sudo; el dueño ve solo su negocio) | `negocios_sudo` |
+| `dinero_seguro.sql` (caja solo lectura, pedidos sin borrar ni reabrir, un cobro por pedido, tope de tasa, método de pago; aplicado el 3 de noviembre de 2026) | `dinero_seguro` |
 | `menu_publico.sql` (fase 1: `menu_publico(p)` y `datos_pago` solo con el pedido abierto; aplicado el 3 de noviembre de 2026) | `menu_publico` |
 | `menu_publico_cierre.sql` (fase 2: sin lectura pública de `menu` ni `datos_pago` en `sucursal_publica`; aplicado el 3 de noviembre de 2026, después de publicar la app) | `menu_publico_cierre` |
 
@@ -20,7 +21,8 @@ públicas solo usan las funciones públicas.
 
 ## Falta
 
-Nada de SQL pendiente en este archivo.
+Nada de SQL por ahora. Siguen fuera de lo aplicado (ver la inspección de noviembre de 2026):
+pendientes globales, presencia y restricciones menores.
 
 ## Fuera del SQL (en el panel de Supabase)
 
