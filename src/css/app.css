@@ -112,9 +112,10 @@ body.app-body::before {
 }
 .nav-tabs::-webkit-scrollbar { display: none; }
 .nav-tab {
-  flex: 1 0 auto; min-width: 62px;
+  /* Reparten el ancho: las 6 secciones del dueño caben sin que se corte la primera ni la última */
+  flex: 1 1 0; min-width: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  padding: 7px 10px 8px;
+  padding: 7px 2px 8px;
   border: 1px solid transparent; border-radius: var(--radio-s);
   background: transparent; color: var(--apagado);
   font-size: 11px; font-weight: 700; letter-spacing: .02em;
@@ -128,7 +129,7 @@ body.app-body::before {
   border-color: color-mix(in srgb, var(--acento) 30%, transparent);
 }
 
-.content { flex: 1; padding: 16px 16px calc(24px + var(--badge-safe)); }
+.content { flex: 1; min-width: 0; padding: 16px 16px calc(24px + var(--badge-safe)); }
 .sec { display: none; } .sec.active { display: block; animation: entrar .2s ease-out; }
 .scr { display: none; } .scr.active { display: block; }
 @keyframes entrar { from { opacity: 0; transform: translateY(4px); } }
@@ -202,6 +203,14 @@ body.app-body::before {
 .cli-card { position: relative; overflow: hidden; }
 .cli-card.activo::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--brillo); }
 .cli-card .nombre { font-size: 14px; font-weight: 700; }
+/* El nombre arriba y la mesa debajo: en la tarjeta de dos columnas no caben juntos y el nombre se cortaba */
+.nombre-mesa { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.nombre-mesa .nombre { overflow-wrap: break-word; line-height: 1.25; }
+/* En 320 px dos tarjetas quedan a ~135 px y un nombre largo se parte a mitad de palabra: una columna */
+@media (max-width: 340px) {
+  .lista-pedidos { grid-template-columns: minmax(0, 1fr); }
+  .nav-tab { font-size: 10px; letter-spacing: 0; }
+}
 .pedido-total { font-family: var(--serif); font-size: 19px; font-weight: 700; margin-top: 10px; }
 .pedido-total .dp, .pedido-total .precio-uno { align-items: flex-start; font-family: var(--sans); }
 
@@ -388,6 +397,7 @@ body.app-body::before {
 .mesa-tag {
   display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: var(--radio-pill);
   font-size: 12px; font-weight: 800; background: var(--superficie-3); color: var(--tinta-suave); flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* ---------- Avisos de clientes ---------- */
@@ -422,7 +432,7 @@ body.app-body::before {
   }
   .hdr-top { flex-direction: column; align-items: flex-start; gap: 16px; margin-bottom: 22px; }
   .nav-tabs { flex-direction: column; margin: 0; padding: 0; overflow: visible; -webkit-mask-image: none; mask-image: none; }
-  .nav-tab { flex-direction: row; justify-content: flex-start; gap: 10px; padding: 11px 12px; font-size: 13.5px; }
+  .nav-tab { flex: none; flex-direction: row; justify-content: flex-start; gap: 10px; padding: 11px 12px; font-size: 13.5px; }
   .nav-tab i { font-size: 19px; }
   .content { overflow-y: auto; height: 100vh; padding: 24px 28px calc(24px + var(--badge-safe)); }
   .content > .tbar { flex-direction: row; align-items: center; flex-wrap: wrap; }
