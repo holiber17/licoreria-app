@@ -12,20 +12,15 @@ Estado al 3 de noviembre de 2026. Todo está probado en un Postgres local con
 | `turnos.sql` (cierre de caja por turno; aplicado el 2 de noviembre de 2026) | `turnos` |
 | `cierre_publico.sql` (sin lectura pública directa; solo el dueño cancela con consumo; aplicado el 2 de noviembre de 2026, después de publicar la versión Svelte) | `cierre_publico` |
 | `negocios.sql` (negocios y rol sudo; el dueño ve solo su negocio) | `negocios_sudo` |
+| `dinero_seguro.sql` (caja solo lectura, pedidos sin borrar ni reabrir, un cobro por pedido, tope de tasa, método de pago; aplicado el 3 de noviembre de 2026) | `dinero_seguro` |
 
 El código de compatibilidad con la base vieja se quitó de la app: las páginas
 públicas solo usan las funciones públicas.
 
 ## Falta
 
-1. **`dinero_seguro.sql`** — dinero y aislamiento (inspección de noviembre de 2026).
-   Requiere `negocios.sql` y `turnos.sql`. No necesita cambios en la app.
-   - Una sucursal movida de negocio deja de dar acceso al dueño anterior.
-   - `caja` solo lectura; pedidos sin borrar ni reabrir; un cobro por pedido;
-     líneas sin precio 0 ni cambio de precio para el empleado; tasa con tope
-     de 25 % para el empleado; método de pago restringido.
-   - Antes de aplicar: revisar que no haya filas que incumplan (las consultas
-     de solo lectura del 3 de noviembre de 2026 no encontraron ninguna).
+Nada de SQL por ahora. Siguen fuera de lo aplicado (ver la inspección de noviembre de 2026):
+menú público por función, pendientes globales, presencia y restricciones menores.
 
 ## Fuera del SQL (en el panel de Supabase)
 
