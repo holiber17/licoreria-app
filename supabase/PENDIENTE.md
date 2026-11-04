@@ -20,7 +20,15 @@ públicas solo usan las funciones públicas.
 
 ## Falta
 
-Nada de SQL pendiente en este archivo.
+1. **`restricciones_menores.sql`** — inspección de noviembre de 2026 (prioridad 1, ítem 6).
+   No necesita cambios en la app. Se revisó en producción que ninguna fila incumple.
+   - `pedido_items`: `total`, `consumido`, `precio_usd` y `unidad` sin NULL.
+   - Un cobro solo puede usar un turno de su misma sucursal.
+   - Sin NaN en turnos, caja, líneas de pedido y tasas.
+   - Borrar una sucursal con historial se rechaza (antes borraba pedidos, cobros,
+     turnos y ajustes en cascada). Para retirarla, `activa = false`.
+
+Siguen fuera de lo aplicado: pendientes globales y presencia.
 
 ## Fuera del SQL (en el panel de Supabase)
 
