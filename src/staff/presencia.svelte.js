@@ -2,7 +2,8 @@
 // de Supabase (presence). No guarda nada en la base: al cerrar la app o perder
 // la señal, la persona desaparece sola de la lista.
 // Hay un canal por negocio, para que el dueño de un negocio no vea a la gente de
-// otro. El sudo escucha todos y se anuncia solo en el del negocio donde está.
+// otro. Los canales son privados: Supabase deja entrar solo a quien cumple las
+// reglas de supabase/presencia_privada.sql. El sudo escucha todos y se anuncia solo en el del negocio donde está.
 import { sb } from '../lib/supabase.js';
 import { restGet } from '../lib/api.js';
 import { e, esSudo } from '../lib/estado.svelte.js';
@@ -10,7 +11,8 @@ import { e, esSudo } from '../lib/estado.svelte.js';
 export const presencia = $state({ enLinea: {} });   // id de usuario -> { nombre, sucursal_id, desde }
 const canales = new Map();                          // id de negocio -> canal
 
-const negocioActual = () => e.sucursal?.negocio_id || 'sin-negocio';
+// Sin negocio, el canal es de la sucursal (nunca uno común). Sin sucursal, ninguno.
+const negocioActual = () => e.sucursal?.negocio_id || (e.sucursal?.id ? 'suc-' + e.sucursal.id : null);
 
 function juntar() {
   const m = {};
@@ -23,15 +25,16 @@ function juntar() {
 function anunciar() {
   if (!e.user) return;
   const yo = { nombre: e.perfil?.nombre || e.user.email || '', sucursal_id: e.sucursal?.id || null, desde: new Date().toISOString() };
+  const actual = negocioActual();
   for (const [negocio, canal] of canales) {
-    (negocio === negocioActual() ? canal.track(yo) : canal.untrack()).catch(() => {});
+    (negocio === actual ? canal.track(yo) : canal.untrack()).catch(() => {});
   }
 }
 
 function unirse(negocio) {
-  if (canales.has(negocio)) return;
+  if (!negocio || canales.has(negocio)) return;
   try {
-    const canal = sb.channel('presencia-' + negocio, { config: { presence: { key: e.user.id } } });
+    const canal = sb.channel('presencia-' + negocio, { config: { private: true, presence: { key: e.user.id } } });
     canales.set(negocio, canal);
     canal.on('presence', { event: 'sync' }, juntar)
       .subscribe(estado => { if (estado === 'SUBSCRIBED' && negocio === negocioActual()) anunciar(); });
