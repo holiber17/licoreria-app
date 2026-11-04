@@ -120,8 +120,10 @@
               </div>
               <div class="fila">
                 <div class="avatar sm">{ini(p.cliente_nombre)}</div>
-                <span class="nombre recorta crece">{p.cliente_nombre}</span>
-                {#if etiquetaMesa(p)}<span class="mesa-tag"><i class="ti ti-armchair"></i> {etiquetaMesa(p)}</span>{/if}
+                <div class="crece nombre-mesa">
+                  <div class="nombre">{p.cliente_nombre}</div>
+                  {#if etiquetaMesa(p)}<span class="mesa-tag"><i class="ti ti-armchair"></i> {etiquetaMesa(p)}</span>{/if}
+                </div>
               </div>
               <div class="pedido-total"><Dual n={totalDe(its)} /></div>
               <div class="t-mini mt-s"><i class="ti ti-clock"></i> {fmtHora(p.created_at)} · {its.length} {plural(its.length, 'ítem')}</div>

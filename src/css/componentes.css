@@ -210,6 +210,12 @@ select.campo.sm { padding-right: 34px; background-position: right 10px center; }
   box-shadow: var(--sombra-1);
 }
 
+/* Las 5 secciones de Admin no caben en una fila del teléfono: se salían y empujaban
+   toda la página hacia un lado. Van en dos filas para que todas se vean. */
+.itabs.admin-tabs { flex-wrap: wrap; }
+.itabs.admin-tabs .itab { flex: 1 1 30%; min-height: 44px; }
+@media (min-width: 440px) { .itabs.admin-tabs .itab { flex: 1 1 0; } }
+
 /* ---------- Métricas ---------- */
 .metric {
   background: var(--superficie);

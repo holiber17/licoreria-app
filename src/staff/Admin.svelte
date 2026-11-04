@@ -14,7 +14,7 @@
 </script>
 
 <section id="sec-admin" class="sec" class:active={activa}>
-  <div class="itabs">
+  <div class="itabs admin-tabs">
     {#each tabs as [id, texto] (id)}
       <button class="itab" class:active={tab === id} id="atab-{id}" onclick={() => (tab = id)}>{texto}</button>
     {/each}
