@@ -73,14 +73,19 @@ class BaseFalsa {
       const p = db.pedidos.find(x => x.id === b.p);
       if (!p) return { json: null };
       const { nota, usuario_id, cliente_id, ...pub } = p;
-      return { json: { mesa: null, ...pub, tasa_actual: this.tasaVigente(p.sucursal_id), pedido_items: db.pedido_items.filter(i => i.pedido_id === p.id) } };
+      const dp = p.estado === 'abierto' ? (db.sucursales.find(x => x.id === p.sucursal_id)?.datos_pago ?? null) : null;
+      return { json: { mesa: null, ...pub, tasa_actual: this.tasaVigente(p.sucursal_id), datos_pago: dp, pedido_items: db.pedido_items.filter(i => i.pedido_id === p.id) } };
     }
     if (fn === 'avisos_de_pedido') {
       return { json: db.solicitudes.filter(s => s.pedido_id === b.p).slice().reverse().slice(0, 10).map(({ id, tipo, estado, created_at, atendida_at }) => ({ id, tipo, estado, created_at, atendida_at })) };
     }
     if (fn === 'sucursal_publica') {
       const s = db.sucursales.find(x => x.id === b.p);
-      return { json: s ? { id: s.id, nombre: s.nombre, app_nombre: s.app_nombre, logo_url: s.logo_url, ciudad: s.ciudad, direccion: s.direccion, datos_pago: s.datos_pago, tasa_actual: this.tasaVigente(s.id) } : null };
+      return { json: s ? { id: s.id, nombre: s.nombre, app_nombre: s.app_nombre, logo_url: s.logo_url, ciudad: s.ciudad, direccion: s.direccion, tasa_actual: this.tasaVigente(s.id) } : null };
+    }
+    if (fn === 'menu_publico') {
+      const cols = ['id', 'nombre', 'tipo', 'precio_usd', 'unidad', 'categoria', 'unidades_combo', 'imagen_url'];
+      return { json: db.menu.filter(m => m.sucursal_id === b.p && m.activo !== false).map(m => Object.fromEntries(cols.map(c => [c, m[c] ?? null]))) };
     }
     if (fn === 'crear_solicitud') {
       const p = db.pedidos.find(x => x.id === b.p_pedido && x.estado === 'abierto');
