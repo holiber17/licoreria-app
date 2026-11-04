@@ -18,14 +18,14 @@ públicas solo usan las funciones públicas.
 
 ## Falta
 
-1. **`dinero_seguro.sql`** — dinero y aislamiento (inspección de noviembre de 2026).
-   Requiere `negocios.sql` y `turnos.sql`. No necesita cambios en la app.
-   - Una sucursal movida de negocio deja de dar acceso al dueño anterior.
-   - `caja` solo lectura; pedidos sin borrar ni reabrir; un cobro por pedido;
-     líneas sin precio 0 ni cambio de precio para el empleado; tasa con tope
-     de 25 % para el empleado; método de pago restringido.
-   - Antes de aplicar: revisar que no haya filas que incumplan (las consultas
-     de solo lectura del 3 de noviembre de 2026 no encontraron ninguna).
+1. **`menu_publico.sql`** (fase 1) — inspección de noviembre de 2026. Solo agrega:
+   `menu_publico(p)` (productos activos de una sucursal) y `datos_pago` dentro de
+   `pedido_publico(p)`, solo con el pedido abierto. Compatible con la app actual.
+2. Publicar en Netlify la app que usa esas funciones (`Carta.svelte`, `PedidoCliente.svelte`).
+3. **`menu_publico_cierre.sql`** (fase 2) — solo DESPUÉS del paso 2: quita la política
+   `"menu publico"` (nadie sin sesión lista las tablas de menú) y saca `datos_pago`
+   de `sucursal_publica`. Con la app anterior, la carta y los métodos de pago
+   dejan de verse.
 
 ## Fuera del SQL (en el panel de Supabase)
 

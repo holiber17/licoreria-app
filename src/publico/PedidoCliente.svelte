@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { LOGO_URL } from '../lib/config.js';
-  import { anonGet, anonRpc } from '../lib/api.js';
+  import { anonRpc } from '../lib/api.js';
   import { ini, etiquetaMesa } from '../lib/catalogo.js';
   import { toastAlerta, esc } from '../lib/avisos.svelte.js';
   import { tasas, fetchTasas, fmtUSD, fmtBs } from './comun.svelte.js';
@@ -43,7 +43,7 @@
     { clave: 'efectivo', nombre: 'Efectivo', icono: 'ti-cash', campos: [], bs: false },
   ];
   const disponibles = $derived.by(() => {
-    const dp = sucursal?.datos_pago || {};
+    const dp = pedido?.datos_pago || {};
     return METODOS.filter(m => m.clave === 'efectivo' || Object.values(dp[m.clave] || {}).some(v => String(v || '').trim()));
   });
 
@@ -66,12 +66,11 @@
 
   async function cargarNegocio(sucursalId) {
     if (sucursal || !sucursalId) return;
-    const id = encodeURIComponent(sucursalId);
     const s = (await anonRpc('sucursal_publica', { p: sucursalId })).data;
     if (!s) return;
     sucursal = s;
     // Categoría e imagen de cada producto, para mostrar su ícono
-    const menu = await anonGet('menu?select=id,nombre,categoria,imagen_url&sucursal_id=eq.' + id);
+    const menu = (await anonRpc('menu_publico', { p: sucursalId })).data;
     const c = {};
     (menu || []).forEach(m => { c[m.id] = m; c['n:' + m.nombre.toLowerCase()] = m; });
     catalogo = c;
@@ -164,7 +163,7 @@
   const montoBs = $derived(partesBs[0]);
   const desiguales = $derived(partes > 1 && partesUSD[0] !== partesUSD[partes - 1]);
   const metodo = $derived(METODOS.find(x => x.clave === metodoElegido) || METODOS[3]);
-  const datosMetodo = $derived((sucursal?.datos_pago || {})[metodo.clave] || {});
+  const datosMetodo = $derived((pedido?.datos_pago || {})[metodo.clave] || {});
   const camposConDatos = $derived(metodo.campos.filter(([k]) => String(datosMetodo[k] || '').trim()));
   const limpiarReferencia = v => String(v || '').replace(/[^A-Za-z0-9-]/g, '').slice(0, 20);
   let enviandoPago = $state(false);
