@@ -29,7 +29,13 @@ públicas solo usan las funciones públicas.
    - Borrar una sucursal con historial se rechaza (antes borraba pedidos, cobros,
      turnos y ajustes en cascada). Para retirarla, `activa = false`.
 
-Siguen fuera de lo aplicado: pendientes globales y presencia.
+2. **`presencia_privada.sql`** — presencia en canales privados (prioridad 1, ítem 5).
+   Aplicarlo ANTES de publicar la app; es compatible con la app actual.
+   - Después de aplicar y publicar la app (que abre los canales con `private: true`):
+     en el panel, **Realtime → Settings → desactivar "Allow public access"**.
+   - Ya no hay canal común "presencia-sin-negocio": sin negocio, el canal es el de la sucursal.
+
+Siguen fuera de lo aplicado: pendientes globales.
 
 ## Fuera del SQL (en el panel de Supabase)
 
