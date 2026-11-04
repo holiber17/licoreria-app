@@ -12,20 +12,15 @@ Estado al 3 de noviembre de 2026. Todo está probado en un Postgres local con
 | `turnos.sql` (cierre de caja por turno; aplicado el 2 de noviembre de 2026) | `turnos` |
 | `cierre_publico.sql` (sin lectura pública directa; solo el dueño cancela con consumo; aplicado el 2 de noviembre de 2026, después de publicar la versión Svelte) | `cierre_publico` |
 | `negocios.sql` (negocios y rol sudo; el dueño ve solo su negocio) | `negocios_sudo` |
+| `menu_publico.sql` (fase 1: `menu_publico(p)` y `datos_pago` solo con el pedido abierto; aplicado el 3 de noviembre de 2026) | `menu_publico` |
+| `menu_publico_cierre.sql` (fase 2: sin lectura pública de `menu` ni `datos_pago` en `sucursal_publica`; aplicado el 3 de noviembre de 2026, después de publicar la app) | `menu_publico_cierre` |
 
 El código de compatibilidad con la base vieja se quitó de la app: las páginas
 públicas solo usan las funciones públicas.
 
 ## Falta
 
-1. **`menu_publico.sql`** (fase 1) — inspección de noviembre de 2026. Solo agrega:
-   `menu_publico(p)` (productos activos de una sucursal) y `datos_pago` dentro de
-   `pedido_publico(p)`, solo con el pedido abierto. Compatible con la app actual.
-2. Publicar en Netlify la app que usa esas funciones (`Carta.svelte`, `PedidoCliente.svelte`).
-3. **`menu_publico_cierre.sql`** (fase 2) — solo DESPUÉS del paso 2: quita la política
-   `"menu publico"` (nadie sin sesión lista las tablas de menú) y saca `datos_pago`
-   de `sucursal_publica`. Con la app anterior, la carta y los métodos de pago
-   dejan de verse.
+Nada de SQL pendiente en este archivo.
 
 ## Fuera del SQL (en el panel de Supabase)
 
