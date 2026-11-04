@@ -38,7 +38,7 @@
       anonRpc('sucursal_publica', { p: sucursalId }).then(r => r.status === 404
         ? anonGet('sucursales?select=nombre,app_nombre,logo_url,ciudad,direccion&id=eq.' + id)
         : (r.data ? [r.data] : [])),
-      anonGet('menu?select=id,nombre,tipo,precio_usd,unidad,categoria,unidades_combo,imagen_url&sucursal_id=eq.' + id + '&activo=eq.true&order=categoria,nombre'),
+      anonRpc('menu_publico', { p: sucursalId }).then(r => r.data),
       anonGet('inventario?select=nombre,stock_actual&sucursal_id=eq.' + id),
       fetchTasas(),
     ]);
